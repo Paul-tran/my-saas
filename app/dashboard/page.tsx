@@ -4,7 +4,7 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-import { supabase } from "../../lib/supabase";
+import { getSupabase } from "../../lib/supabase";
 
 export default function Dashboard() {
   const [docCount, setDocCount] = useState(0);
@@ -12,25 +12,21 @@ export default function Dashboard() {
   const [inspectionCount, setInspectionCount] = useState(0);
 
   useEffect(() => {
-    async function fetchStats() {
-      const { count: docs } = await supabase
-        .from("documents")
-        .select("*", { count: "exact", head: true });
+async function fetchStats() {
+  const client = getSupabase();
+  
+  const { data: docs } = await client.from("documents").select("*");
+  const { data: assets } = await client.from("assets").select("*");
+  const { data: inspections } = await client
+    .from("commissioning")
+    .select("*")
+    .eq("status", "Pending");
 
-      const { count: assets } = await supabase
-        .from("assets")
-        .select("*", { count: "exact", head: true });
-
-      const { count: inspections } = await supabase
-        .from("commissioning")
-        .select("*", { count: "exact", head: true })
-        .eq("status", "Pending");
-
-      setDocCount(docs || 0);
-      setAssetCount(assets || 0);
-      setInspectionCount(inspections || 0);
-    }
-    fetchStats();
+  setDocCount(docs?.length || 0);
+  setAssetCount(assets?.length || 0);
+  setInspectionCount(inspections?.length || 0);
+}
+fetchStats();
   }, []);
 
   return (
