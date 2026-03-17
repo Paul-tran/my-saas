@@ -2,7 +2,6 @@
 
 export const dynamic = "force-dynamic";
 
-
 import { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import { getSupabase } from "../../../lib/supabase";
@@ -13,7 +12,6 @@ type Inspection = {
   status: string;
   assigned_to: string;
   due_date: string;
-  created_at: string;
 };
 
 export default function Commissioning() {
@@ -29,77 +27,49 @@ export default function Commissioning() {
     if (!error && data) setInspections(data);
   }
 
-  useEffect(() => {
-    fetchInspections();
-  }, []);
+  useEffect(() => { fetchInspections(); }, []);
 
   async function handleAddInspection() {
     if (!title) return;
-    await getSupabase().from("commissioning").insert({
-      title,
-      assigned_to: assignedTo,
-      due_date: dueDate,
-      status,
-    });
-    setTitle("");
-    setAssignedTo("");
-    setDueDate("");
-    setStatus("Pending");
+    await getSupabase().from("commissioning").insert({ title, assigned_to: assignedTo, due_date: dueDate, status });
+    setTitle(""); setAssignedTo(""); setDueDate(""); setStatus("Pending");
     setShowForm(false);
     await fetchInspections();
   }
 
+  const inputStyle = { background: "#111", border: "1px solid #333", borderRadius: "6px", padding: "10px 14px", fontSize: "14px", color: "#fff", width: "100%", boxSizing: "border-box" as const };
+  const statusColor = (s: string) => s === "Completed" ? "#4ade80" : s === "In Progress" ? "#60a5fa" : s === "Failed" ? "#f87171" : "#fbbf24";
+
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div style={{ display: "flex", minHeight: "100vh", background: "#0a0a0a", fontFamily: "'DM Sans', sans-serif", color: "#fff" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap');`}</style>
       <Sidebar active="commissioning" />
 
-      <main className="flex-1 px-8 py-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Commissioning</h2>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
-          >
+      <main style={{ flex: 1, padding: "48px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "48px" }}>
+          <div>
+            <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "36px", letterSpacing: "-1px", marginBottom: "8px" }}>Commissioning</h2>
+            <p style={{ color: "#666", fontSize: "15px" }}>Track inspections and sign-offs.</p>
+          </div>
+          <button onClick={() => setShowForm(!showForm)} style={{ background: "#f5a623", color: "#000", padding: "12px 24px", borderRadius: "6px", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer" }}>
             + Add Inspection
           </button>
         </div>
 
         {showForm && (
-          <div className="mt-6 bg-white rounded-xl p-6 shadow-sm max-w-lg">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">New Inspection</h3>
-            <div className="flex flex-col gap-4">
-              <input
-                className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                placeholder="Inspection title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-              />
-              <input
-                className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                placeholder="Assigned to"
-                value={assignedTo}
-                onChange={(e) => setAssignedTo(e.target.value)}
-              />
-              <input
-                type="date"
-                className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-              <select
-                className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
+          <div style={{ background: "#111", border: "1px solid #222", borderRadius: "8px", padding: "32px", maxWidth: "480px", marginBottom: "40px" }}>
+            <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "22px", marginBottom: "24px" }}>New Inspection</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+              <input style={inputStyle} placeholder="Inspection title" value={title} onChange={(e) => setTitle(e.target.value)} />
+              <input style={inputStyle} placeholder="Assigned to" value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)} />
+              <input type="date" style={inputStyle} value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              <select style={inputStyle} value={status} onChange={(e) => setStatus(e.target.value)}>
                 <option>Pending</option>
                 <option>In Progress</option>
                 <option>Completed</option>
                 <option>Failed</option>
               </select>
-              <button
-                onClick={handleAddInspection}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
-              >
+              <button onClick={handleAddInspection} style={{ background: "#f5a623", color: "#000", padding: "12px", borderRadius: "6px", fontSize: "14px", fontWeight: "700", border: "none", cursor: "pointer", marginTop: "8px" }}>
                 Save Inspection
               </button>
             </div>
@@ -107,32 +77,24 @@ export default function Commissioning() {
         )}
 
         {inspections.length === 0 ? (
-          <div className="flex flex-col items-center justify-center mt-24 text-center">
-            <p className="text-5xl">✅</p>
-            <h3 className="mt-4 text-lg font-bold text-gray-800">No inspections yet</h3>
-            <p className="mt-2 text-gray-500">Add your first inspection to get started.</p>
+          <div style={{ textAlign: "center", marginTop: "120px" }}>
+            <p style={{ fontSize: "48px" }}>✅</p>
+            <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "24px", margin: "16px 0 8px" }}>No inspections yet</h3>
+            <p style={{ color: "#666" }}>Add your first inspection to get started.</p>
           </div>
         ) : (
-          <div className="mt-8 bg-white rounded-xl shadow-sm">
-            <div className="grid grid-cols-4 px-6 py-3 border-b border-gray-100 text-xs font-medium text-gray-400 uppercase">
-              <span>Title</span>
-              <span>Assigned To</span>
-              <span>Due Date</span>
-              <span>Status</span>
+          <div style={{ border: "1px solid #222", borderRadius: "8px", overflow: "hidden" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", padding: "12px 24px", borderBottom: "1px solid #222", background: "#111" }}>
+              {["Title", "Assigned To", "Due Date", "Status"].map((h) => (
+                <span key={h} style={{ color: "#444", fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px" }}>{h}</span>
+              ))}
             </div>
             {inspections.map((inspection) => (
-              <div key={inspection.id} className="grid grid-cols-4 px-6 py-4 border-b border-gray-100">
-                <span className="text-gray-800 font-medium">{inspection.title}</span>
-                <span className="text-gray-500">{inspection.assigned_to}</span>
-                <span className="text-gray-500">{inspection.due_date}</span>
-                <span className={`text-sm font-medium ${
-                  inspection.status === "Completed" ? "text-green-600" :
-                  inspection.status === "In Progress" ? "text-blue-500" :
-                  inspection.status === "Failed" ? "text-red-500" :
-                  "text-yellow-500"
-                }`}>
-                  {inspection.status}
-                </span>
+              <div key={inspection.id} style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr 1fr", padding: "16px 24px", borderBottom: "1px solid #161616", alignItems: "center" }}>
+                <span style={{ fontSize: "14px", fontWeight: "500" }}>{inspection.title}</span>
+                <span style={{ color: "#666", fontSize: "14px" }}>{inspection.assigned_to}</span>
+                <span style={{ color: "#666", fontSize: "14px" }}>{inspection.due_date}</span>
+                <span style={{ color: statusColor(inspection.status), fontSize: "13px", fontWeight: "700" }}>{inspection.status}</span>
               </div>
             ))}
           </div>

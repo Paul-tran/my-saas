@@ -2,7 +2,6 @@
 
 export const dynamic = "force-dynamic";
 
-
 import { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
 import { getSupabase } from "../../../lib/supabase";
@@ -30,61 +29,53 @@ export default function Documents() {
   async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-
     setUploading(true);
-
     const fileName = `${Date.now()}_${file.name}`;
-    const { error: uploadError } = await getSupabase().storage
-      .from("documents")
-      .upload(fileName, file);
-
+    const { error: uploadError } = await getSupabase().storage.from("documents").upload(fileName, file);
     if (uploadError) {
       alert("Upload failed: " + uploadError.message);
       setUploading(false);
       return;
     }
-
-    const { data: urlData } = getSupabase().storage
-      .from("documents")
-      .getPublicUrl(fileName);
-
-    await getSupabase().from("documents").insert({
-      name: file.name,
-      url: urlData.publicUrl,
-      uploaded_at: new Date().toISOString(),
-    });
-
+    const { data: urlData } = getSupabase().storage.from("documents").getPublicUrl(fileName);
+    await getSupabase().from("documents").insert({ name: file.name, url: urlData.publicUrl, uploaded_at: new Date().toISOString() });
     await fetchDocuments();
     setUploading(false);
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div style={{ display: "flex", minHeight: "100vh", background: "#0a0a0a", fontFamily: "'DM Sans', sans-serif", color: "#fff" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap');`}</style>
       <Sidebar active="documents" />
 
-      <main className="flex-1 px-8 py-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Documents</h2>
-          <label className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer">
+      <main style={{ flex: 1, padding: "48px" }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "48px" }}>
+          <div>
+            <h2 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "36px", letterSpacing: "-1px", marginBottom: "8px" }}>Documents</h2>
+            <p style={{ color: "#666", fontSize: "15px" }}>Manage your project documents.</p>
+          </div>
+          <label style={{ background: "#f5a623", color: "#000", padding: "12px 24px", borderRadius: "6px", fontSize: "14px", fontWeight: "700", cursor: "pointer" }}>
             {uploading ? "Uploading..." : "+ Upload Document"}
-            <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} />
+            <input type="file" style={{ display: "none" }} onChange={handleUpload} disabled={uploading} />
           </label>
         </div>
 
         {documents.length === 0 ? (
-          <div className="flex flex-col items-center justify-center mt-24 text-center">
-            <p className="text-5xl">📄</p>
-            <h3 className="mt-4 text-lg font-bold text-gray-800">No documents yet</h3>
-            <p className="mt-2 text-gray-500">Upload your first document to get started.</p>
+          <div style={{ textAlign: "center", marginTop: "120px" }}>
+            <p style={{ fontSize: "48px" }}>📄</p>
+            <h3 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "24px", margin: "16px 0 8px" }}>No documents yet</h3>
+            <p style={{ color: "#666" }}>Upload your first document to get started.</p>
           </div>
         ) : (
-          <div className="mt-8 bg-white rounded-xl shadow-sm">
+          <div style={{ border: "1px solid #222", borderRadius: "8px", overflow: "hidden" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", padding: "12px 24px", borderBottom: "1px solid #222", background: "#111" }}>
+              <span style={{ color: "#444", fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px" }}>Name</span>
+              <span style={{ color: "#444", fontSize: "12px", fontWeight: "700", textTransform: "uppercase", letterSpacing: "1px" }}>Date</span>
+            </div>
             {documents.map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <a href={doc.url} target="_blank" className="text-blue-600 font-medium hover:underline">
-                  {doc.name}
-                </a>
-                <p className="text-gray-400 text-sm">{new Date(doc.uploaded_at).toLocaleDateString()}</p>
+              <div key={doc.id} style={{ display: "grid", gridTemplateColumns: "1fr auto", padding: "16px 24px", borderBottom: "1px solid #161616", alignItems: "center" }}>
+                <a href={doc.url} target="_blank" style={{ color: "#f5a623", textDecoration: "none", fontSize: "14px", fontWeight: "500" }}>{doc.name}</a>
+                <span style={{ color: "#444", fontSize: "13px" }}>{new Date(doc.uploaded_at).toLocaleDateString()}</span>
               </div>
             ))}
           </div>
