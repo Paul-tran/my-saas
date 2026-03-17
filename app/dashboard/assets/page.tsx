@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
-import { supabase } from "../../../lib/supabase";
+import { getSupabase } from "../../../lib/supabase";
 
 type Asset = {
   id: number;
@@ -25,7 +25,7 @@ export default function Assets() {
   const [location, setLocation] = useState("");
 
   async function fetchAssets() {
-    const { data, error } = await supabase.from("assets").select("*");
+    const { data, error } = await getSupabase().from("assets").select("*");
     if (!error && data) setAssets(data);
   }
 
@@ -35,7 +35,7 @@ export default function Assets() {
 
   async function handleAddAsset() {
     if (!name) return;
-    await supabase.from("assets").insert({ name, type, status, location });
+    await getSupabase().from("assets").insert({ name, type, status, location });
     setName("");
     setType("");
     setStatus("Active");
