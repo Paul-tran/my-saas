@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
-import { supabase } from "../../../lib/supabase";
+import { getSupabase } from "../../../lib/supabase";
 
 type Document = {
   id: number;
@@ -19,7 +19,7 @@ export default function Documents() {
   const [uploading, setUploading] = useState(false);
 
   async function fetchDocuments() {
-    const { data, error } = await supabase.from("documents").select("*");
+    const { data, error } = await getSupabase().from("documents").select("*");
     if (!error && data) setDocuments(data);
   }
 
@@ -34,7 +34,7 @@ export default function Documents() {
     setUploading(true);
 
     const fileName = `${Date.now()}_${file.name}`;
-    const { error: uploadError } = await supabase.storage
+    const { error: uploadError } = await getSupabase().storage
       .from("documents")
       .upload(fileName, file);
 
@@ -44,11 +44,11 @@ export default function Documents() {
       return;
     }
 
-    const { data: urlData } = supabase.storage
+    const { data: urlData } = getSupabase().storage
       .from("documents")
       .getPublicUrl(fileName);
 
-    await supabase.from("documents").insert({
+    await getSupabase().from("documents").insert({
       name: file.name,
       url: urlData.publicUrl,
       uploaded_at: new Date().toISOString(),

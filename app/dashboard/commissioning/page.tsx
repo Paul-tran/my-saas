@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import Sidebar from "../../components/Sidebar";
-import { supabase } from "../../../lib/supabase";
+import { getSupabase } from "../../../lib/supabase";
 
 type Inspection = {
   id: number;
@@ -25,7 +25,7 @@ export default function Commissioning() {
   const [status, setStatus] = useState("Pending");
 
   async function fetchInspections() {
-    const { data, error } = await supabase.from("commissioning").select("*");
+    const { data, error } = await getSupabase().from("commissioning").select("*");
     if (!error && data) setInspections(data);
   }
 
@@ -35,7 +35,7 @@ export default function Commissioning() {
 
   async function handleAddInspection() {
     if (!title) return;
-    await supabase.from("commissioning").insert({
+    await getSupabase().from("commissioning").insert({
       title,
       assigned_to: assignedTo,
       due_date: dueDate,
