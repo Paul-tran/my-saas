@@ -15,6 +15,9 @@ export default function Sidebar({ active }: { active: string }) {
         <a href="/dashboard/commissioning" className={`px-4 py-2 rounded-lg text-sm font-medium ${active === "commissioning" ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-50"}`}>
           Commissioning
         </a>
+        <a href="/dashboard/billing" className={`px-4 py-2 rounded-lg text-sm font-medium ${active === "billing" ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-50"}`}>
+          Billing
+        </a>
       </nav>
     </aside>
   );

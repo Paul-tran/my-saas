@@ -20,9 +20,13 @@ export default function Pricing() {
             <li>✅ Unlimited Projects</li>
             <li>✅ Priority Support</li>
           </ul>
-          <button className="mt-8 w-full bg-blue-600 text-white py-3 rounded-lg font-medium">
-            Get Started Free
-          </button>
+          <a
+            href="/sign-up"
+            className="mt-8 block w-full bg-blue-600 text-white py-3 rounded-lg font-medium text-center"
+          >
+            Start 14-Day Free Trial
+          </a>
+          <p className="mt-3 text-xs text-gray-400 text-center">No credit card required</p>
         </div>
       </section>
 

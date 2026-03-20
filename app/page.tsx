@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Navbar from "./components/Navbar";
 import Footer from "./components/Footer";
 
@@ -15,9 +16,9 @@ export default function Home() {
         <p className="mt-6 text-xl text-gray-500 max-w-xl">
           Document control, asset management, and commissioning — all in one place.
         </p>
-        <button className="mt-8 bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-medium">
+        <Link href="/sign-up" className="mt-8 bg-blue-600 text-white px-8 py-4 rounded-lg text-lg font-medium">
           Start Free Trial
-        </button>
+        </Link>
      </section>
 
       {/* Features Section */}
@@ -52,9 +53,9 @@ export default function Home() {
         <p className="mt-4 text-blue-100 text-xl">
           Join construction teams already using ConstructIQ.
         </p>
-        <button className="mt-8 bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-medium">
+        <Link href="/sign-up" className="mt-8 bg-white text-blue-600 px-8 py-4 rounded-lg text-lg font-medium">
           Get Started Free
-        </button>
+        </Link>
       </section>
       <Footer />
     </main>

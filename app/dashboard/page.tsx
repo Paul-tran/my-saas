@@ -2,32 +2,11 @@
 
 export const dynamic = "force-dynamic";
 
-import { useEffect, useState } from "react";
 import Sidebar from "../components/Sidebar";
-import { getSupabase } from "../../lib/supabase";
+import { useDashboard } from "../../lib/hooks/useDashboard";
 
 export default function Dashboard() {
-  const [docCount, setDocCount] = useState(0);
-  const [assetCount, setAssetCount] = useState(0);
-  const [inspectionCount, setInspectionCount] = useState(0);
-
-  useEffect(() => {
-async function fetchStats() {
-  const client = getSupabase();
-  
-  const { data: docs } = await client.from("documents").select("*");
-  const { data: assets } = await client.from("assets").select("*");
-  const { data: inspections } = await client
-    .from("commissioning")
-    .select("*")
-    .eq("status", "Pending");
-
-  setDocCount(docs?.length || 0);
-  setAssetCount(assets?.length || 0);
-  setInspectionCount(inspections?.length || 0);
-}
-fetchStats();
-  }, []);
+  const { docCount, assetCount, inspectionCount, loading } = useDashboard();
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -40,15 +19,21 @@ fetchStats();
         <div className="grid grid-cols-3 gap-6 mt-8">
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <p className="text-sm text-gray-500">Total Documents</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{docCount}</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">
+              {loading ? "—" : docCount}
+            </p>
           </div>
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <p className="text-sm text-gray-500">Active Assets</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{assetCount}</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">
+              {loading ? "—" : assetCount}
+            </p>
           </div>
           <div className="bg-white rounded-xl p-6 shadow-sm">
             <p className="text-sm text-gray-500">Open Inspections</p>
-            <p className="text-3xl font-bold text-gray-900 mt-1">{inspectionCount}</p>
+            <p className="text-3xl font-bold text-gray-900 mt-1">
+              {loading ? "—" : inspectionCount}
+            </p>
           </div>
         </div>
       </main>

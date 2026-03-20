@@ -2,51 +2,31 @@
 
 export const dynamic = "force-dynamic";
 
-
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Sidebar from "../../components/Sidebar";
-import { supabase } from "../../../lib/supabase";
+import ErrorBanner from "../../components/ErrorBanner";
+import { useCommissioning } from "../../../lib/hooks/useCommissioning";
+import { STATUS_LABELS } from "../../../lib/models/commissioning";
 
-type Inspection = {
-  id: number;
-  title: string;
-  status: string;
-  assigned_to: string;
-  due_date: string;
-  created_at: string;
+const STATUS_COLOR: Record<string, string> = {
+  not_started: "text-yellow-500",
+  in_progress: "text-blue-500",
+  completed: "text-green-600",
+  failed: "text-red-500",
 };
 
 export default function Commissioning() {
-  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const { records, loading, error, handleAddRecord } = useCommissioning();
   const [showForm, setShowForm] = useState(false);
-  const [title, setTitle] = useState("");
+  const [name, setName] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
-  const [dueDate, setDueDate] = useState("");
-  const [status, setStatus] = useState("Pending");
 
-  async function fetchInspections() {
-    const { data, error } = await supabase.from("commissioning").select("*");
-    if (!error && data) setInspections(data);
-  }
-
-  useEffect(() => {
-    fetchInspections();
-  }, []);
-
-  async function handleAddInspection() {
-    if (!title) return;
-    await supabase.from("commissioning").insert({
-      title,
-      assigned_to: assignedTo,
-      due_date: dueDate,
-      status,
-    });
-    setTitle("");
+  async function handleSubmit() {
+    if (!name) return;
+    await handleAddRecord({ name, assigned_to: assignedTo });
+    setName("");
     setAssignedTo("");
-    setDueDate("");
-    setStatus("Pending");
     setShowForm(false);
-    await fetchInspections();
   }
 
   return (
@@ -64,40 +44,26 @@ export default function Commissioning() {
           </button>
         </div>
 
+        {error && <ErrorBanner message={error} />}
+
         {showForm && (
           <div className="mt-6 bg-white rounded-xl p-6 shadow-sm max-w-lg">
             <h3 className="text-lg font-bold text-gray-800 mb-4">New Inspection</h3>
             <div className="flex flex-col gap-4">
               <input
                 className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                placeholder="Inspection title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Inspection name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
               />
               <input
                 className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                placeholder="Assigned to"
+                placeholder="Assigned to (user ID)"
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
               />
-              <input
-                type="date"
-                className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-              />
-              <select
-                className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                <option>Pending</option>
-                <option>In Progress</option>
-                <option>Completed</option>
-                <option>Failed</option>
-              </select>
               <button
-                onClick={handleAddInspection}
+                onClick={handleSubmit}
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
               >
                 Save Inspection
@@ -106,7 +72,11 @@ export default function Commissioning() {
           </div>
         )}
 
-        {inspections.length === 0 ? (
+        {loading ? (
+          <div className="flex justify-center mt-24">
+            <p className="text-gray-400">Loading...</p>
+          </div>
+        ) : records.length === 0 ? (
           <div className="flex flex-col items-center justify-center mt-24 text-center">
             <p className="text-5xl">✅</p>
             <h3 className="mt-4 text-lg font-bold text-gray-800">No inspections yet</h3>
@@ -114,24 +84,17 @@ export default function Commissioning() {
           </div>
         ) : (
           <div className="mt-8 bg-white rounded-xl shadow-sm">
-            <div className="grid grid-cols-4 px-6 py-3 border-b border-gray-100 text-xs font-medium text-gray-400 uppercase">
-              <span>Title</span>
+            <div className="grid grid-cols-3 px-6 py-3 border-b border-gray-100 text-xs font-medium text-gray-400 uppercase">
+              <span>Name</span>
               <span>Assigned To</span>
-              <span>Due Date</span>
               <span>Status</span>
             </div>
-            {inspections.map((inspection) => (
-              <div key={inspection.id} className="grid grid-cols-4 px-6 py-4 border-b border-gray-100">
-                <span className="text-gray-800 font-medium">{inspection.title}</span>
-                <span className="text-gray-500">{inspection.assigned_to}</span>
-                <span className="text-gray-500">{inspection.due_date}</span>
-                <span className={`text-sm font-medium ${
-                  inspection.status === "Completed" ? "text-green-600" :
-                  inspection.status === "In Progress" ? "text-blue-500" :
-                  inspection.status === "Failed" ? "text-red-500" :
-                  "text-yellow-500"
-                }`}>
-                  {inspection.status}
+            {records.map((record) => (
+              <div key={record.id} className="grid grid-cols-3 px-6 py-4 border-b border-gray-100">
+                <span className="text-gray-800 font-medium">{record.name}</span>
+                <span className="text-gray-500">{record.assigned_to || "—"}</span>
+                <span className={`text-sm font-medium ${STATUS_COLOR[record.overall_status] || "text-gray-500"}`}>
+                  {STATUS_LABELS[record.overall_status] || record.overall_status}
                 </span>
               </div>
             ))}

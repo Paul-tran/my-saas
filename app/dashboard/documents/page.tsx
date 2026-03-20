@@ -2,61 +2,13 @@
 
 export const dynamic = "force-dynamic";
 
-
-import { useEffect, useState } from "react";
+import Link from "next/link";
 import Sidebar from "../../components/Sidebar";
-import { supabase } from "../../../lib/supabase";
-
-type Document = {
-  id: number;
-  name: string;
-  url: string;
-  uploaded_at: string;
-};
+import ErrorBanner from "../../components/ErrorBanner";
+import { useDocuments } from "../../../lib/hooks/useDocuments";
 
 export default function Documents() {
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [uploading, setUploading] = useState(false);
-
-  async function fetchDocuments() {
-    const { data, error } = await supabase.from("documents").select("*");
-    if (!error && data) setDocuments(data);
-  }
-
-  useEffect(() => {
-    fetchDocuments();
-  }, []);
-
-  async function handleUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setUploading(true);
-
-    const fileName = `${Date.now()}_${file.name}`;
-    const { error: uploadError } = await supabase.storage
-      .from("documents")
-      .upload(fileName, file);
-
-    if (uploadError) {
-      alert("Upload failed: " + uploadError.message);
-      setUploading(false);
-      return;
-    }
-
-    const { data: urlData } = supabase.storage
-      .from("documents")
-      .getPublicUrl(fileName);
-
-    await supabase.from("documents").insert({
-      name: file.name,
-      url: urlData.publicUrl,
-      uploaded_at: new Date().toISOString(),
-    });
-
-    await fetchDocuments();
-    setUploading(false);
-  }
+  const { documents, loading, uploading, error, handleUpload, openDocument, handleDelete } = useDocuments();
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -67,11 +19,25 @@ export default function Documents() {
           <h2 className="text-2xl font-bold text-gray-900">Documents</h2>
           <label className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium cursor-pointer">
             {uploading ? "Uploading..." : "+ Upload Document"}
-            <input type="file" className="hidden" onChange={handleUpload} disabled={uploading} />
+            <input
+              type="file"
+              className="hidden"
+              disabled={uploading}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleUpload(file);
+              }}
+            />
           </label>
         </div>
 
-        {documents.length === 0 ? (
+        {error && <ErrorBanner message={error} />}
+
+        {loading ? (
+          <div className="flex justify-center mt-24">
+            <p className="text-gray-400">Loading...</p>
+          </div>
+        ) : documents.length === 0 ? (
           <div className="flex flex-col items-center justify-center mt-24 text-center">
             <p className="text-5xl">📄</p>
             <h3 className="mt-4 text-lg font-bold text-gray-800">No documents yet</h3>
@@ -80,11 +46,32 @@ export default function Documents() {
         ) : (
           <div className="mt-8 bg-white rounded-xl shadow-sm">
             {documents.map((doc) => (
-              <div key={doc.id} className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-                <a href={doc.url} target="_blank" className="text-blue-600 font-medium hover:underline">
+              <div
+                key={doc.id}
+                className="flex items-center justify-between px-6 py-4 border-b border-gray-100"
+              >
+                <Link
+                  href={`/dashboard/documents/${doc.id}`}
+                  className="text-blue-600 font-medium hover:underline"
+                >
                   {doc.name}
-                </a>
-                <p className="text-gray-400 text-sm">{new Date(doc.uploaded_at).toLocaleDateString()}</p>
+                </Link>
+                <div className="flex items-center gap-4">
+                  <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded">
+                    {doc.status}
+                  </span>
+                  <p className="text-gray-400 text-sm">
+                    {new Date(doc.created_at).toLocaleDateString()}
+                  </p>
+                  <button
+                    onClick={() => {
+                      if (confirm(`Delete "${doc.name}"?`)) handleDelete(doc.id);
+                    }}
+                    className="text-xs text-red-500 hover:text-red-700 font-medium"
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             ))}
           </div>
