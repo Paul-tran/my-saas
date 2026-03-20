@@ -1,23 +1,42 @@
+import Link from "next/link";
+
 export default function Sidebar({ active }: { active: string }) {
+  const links = [
+    { href: "/dashboard", label: "Dashboard", key: "dashboard", icon: "⊞" },
+    { href: "/dashboard/documents", label: "Documents", key: "documents", icon: "📄" },
+    { href: "/dashboard/assets", label: "Assets", key: "assets", icon: "🏗️" },
+    { href: "/dashboard/commissioning", label: "Commissioning", key: "commissioning", icon: "✅" },
+    { href: "/dashboard/billing", label: "Billing", key: "billing", icon: "💳" },
+  ];
+
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 px-4 py-8">
-      <h1 className="text-xl font-bold text-blue-600 mb-8">ConstructIQ</h1>
-      <nav className="flex flex-col gap-2">
-        <a href="/dashboard" className={`px-4 py-2 rounded-lg text-sm font-medium ${active === "dashboard" ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-50"}`}>
-          Dashboard
-        </a>
-        <a href="/dashboard/documents" className={`px-4 py-2 rounded-lg text-sm font-medium ${active === "documents" ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-50"}`}>
-          Documents
-        </a>
-        <a href="/dashboard/assets" className={`px-4 py-2 rounded-lg text-sm font-medium ${active === "assets" ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-50"}`}>
-          Assets
-        </a>
-        <a href="/dashboard/commissioning" className={`px-4 py-2 rounded-lg text-sm font-medium ${active === "commissioning" ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-50"}`}>
-          Commissioning
-        </a>
-        <a href="/dashboard/billing" className={`px-4 py-2 rounded-lg text-sm font-medium ${active === "billing" ? "bg-blue-50 text-blue-600" : "text-gray-500 hover:bg-gray-50"}`}>
-          Billing
-        </a>
+    <aside style={{ width: "240px", background: "#0a0a0a", borderRight: "1px solid #222", padding: "32px 16px", display: "flex", flexDirection: "column" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap');`}</style>
+      <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: "20px", color: "#fff", padding: "0 12px", marginBottom: "40px", display: "block" }}>ConstructIQ</span>
+      <nav style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+        {links.map((link) => (
+          <Link
+            key={link.key}
+            href={link.href}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+              padding: "10px 12px",
+              borderRadius: "6px",
+              fontSize: "14px",
+              fontFamily: "'DM Sans', sans-serif",
+              textDecoration: "none",
+              background: active === link.key ? "#1a1a1a" : "transparent",
+              color: active === link.key ? "#f5a623" : "#666",
+              fontWeight: active === link.key ? "700" : "400",
+              borderLeft: active === link.key ? "2px solid #f5a623" : "2px solid transparent",
+            }}
+          >
+            <span>{link.icon}</span>
+            {link.label}
+          </Link>
+        ))}
       </nav>
     </aside>
   );
