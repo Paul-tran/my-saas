@@ -10,35 +10,44 @@ import {
   analyzeDrawing,
   confirmPin,
   dismissPin,
-  getLatestRevisionUrl,
+  createPin,
 } from "../models/drawings";
+import { fetchRevisions, getDocumentFileUrl } from "../models/documents";
 
 const DEFAULT_PROJECT_ID = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
 
-export function useDrawingViewer(documentId: number) {
+export function useDrawingViewer(documentId: number, initialPage = 1) {
   const { getToken } = useAuth();
 
   const [document, setDocument] = useState<Document | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [pins, setPins] = useState<Pin[]>([]);
   const [selectedPinId, setSelectedPinId] = useState<number | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(initialPage);
+  const [latestRevisionId, setLatestRevisionId] = useState<number | null>(null);
+  const [pendingPlacement, setPendingPlacement] = useState<{ x_percent: number; y_percent: number } | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const token = await getToken();
     if (!token) return;
     try {
-      const [doc, url, pinsData] = await Promise.all([
+      const [doc, revisions, pinsData] = await Promise.all([
         fetchDocument(documentId, token),
-        getLatestRevisionUrl(documentId, token),
+        fetchRevisions(documentId, token),
         fetchPins(documentId, token),
       ]);
       setDocument(doc);
-      setPdfUrl(url);
       setPins(pinsData);
+      if (revisions.length) {
+        const latest = revisions[revisions.length - 1];
+        setLatestRevisionId(latest.id);
+        const url = await getDocumentFileUrl(latest.file_key, token);
+        setPdfUrl(url);
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -64,26 +73,72 @@ export function useDrawingViewer(documentId: number) {
         ...newPins,
       ]);
     } catch (e: any) {
-      setError(e.message);
+      setActionError(e.message);
     } finally {
       setAnalyzing(false);
     }
   }
 
-  async function handleConfirm(pinId: number, siteId: number) {
+  async function handleConfirm(
+    pinId: number,
+    siteId: number,
+    locationId?: number,
+    unitId?: number,
+    partitionId?: number,
+    parentId?: number,
+    subgroupId?: number,
+  ) {
     const token = await getToken();
     if (!token) return;
-    const updated = await confirmPin(pinId, DEFAULT_PROJECT_ID, siteId, token);
-    setPins((prev) => prev.map((p) => (p.id === pinId ? updated : p)));
-    setSelectedPinId(null);
+    try {
+      const updated = await confirmPin(pinId, DEFAULT_PROJECT_ID, siteId, token, locationId, unitId, partitionId, parentId, subgroupId);
+      setPins((prev) => prev.map((p) => (p.id === pinId ? updated : p)));
+      setSelectedPinId(null);
+    } catch (e: any) {
+      setActionError(e.message);
+    }
   }
 
   async function handleDismiss(pinId: number) {
     const token = await getToken();
     if (!token) return;
-    const updated = await dismissPin(pinId, token);
-    setPins((prev) => prev.map((p) => (p.id === pinId ? updated : p)));
-    setSelectedPinId(null);
+    try {
+      const updated = await dismissPin(pinId, token);
+      setPins((prev) => prev.map((p) => (p.id === pinId ? updated : p)));
+      setSelectedPinId(null);
+    } catch (e: any) {
+      setActionError(e.message);
+    }
+  }
+
+  async function handleCreatePin(
+    tag: string,
+    assetType?: string,
+    description?: string
+  ) {
+    const token = await getToken();
+    if (!token || !pendingPlacement || !latestRevisionId) return;
+    try {
+      const pin = await createPin(
+        documentId,
+        {
+          revision_id: latestRevisionId,
+          tag,
+          asset_type: assetType,
+          description,
+          x_percent: pendingPlacement.x_percent,
+          y_percent: pendingPlacement.y_percent,
+          page_number: currentPage,
+        },
+        token
+      );
+      setPins((prev) => [...prev, pin]);
+      setSelectedPinId(pin.id);
+    } catch (e: any) {
+      setActionError(e.message);
+    } finally {
+      setPendingPlacement(null);
+    }
   }
 
   const selectedPin = pins.find((p) => p.id === selectedPinId) ?? null;
@@ -103,5 +158,11 @@ export function useDrawingViewer(documentId: number) {
     handleAnalyze,
     handleConfirm,
     handleDismiss,
+    handleCreatePin,
+    pendingPlacement,
+    setPendingPlacement,
+    latestRevisionId,
+    actionError,
+    setActionError,
   };
 }

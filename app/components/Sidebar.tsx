@@ -6,7 +6,11 @@ export default function Sidebar({ active }: { active: string }) {
     { href: "/dashboard/documents", label: "Documents", key: "documents", icon: "📄" },
     { href: "/dashboard/assets", label: "Assets", key: "assets", icon: "🏗️" },
     { href: "/dashboard/commissioning", label: "Commissioning", key: "commissioning", icon: "✅" },
+    { href: "/dashboard/work-orders", label: "Work Orders", key: "work-orders", icon: "🔧" },
     { href: "/dashboard/billing", label: "Billing", key: "billing", icon: "💳" },
+    { href: "/dashboard/settings/geography", label: "Geography", key: "geography", icon: "📍" },
+    { href: "/dashboard/settings/systems", label: "Systems", key: "systems", icon: "🏛️" },
+    { href: "/dashboard/settings/work-order-types", label: "Settings", key: "settings", icon: "⚙️" },
   ];
 
   return (

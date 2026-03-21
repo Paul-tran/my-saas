@@ -17,9 +17,12 @@ const DrawingViewer = dynamicImport(() => import("./DrawingViewer"), {
 
 export default function DocumentDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ id: string }>;
+  searchParams: Promise<{ page?: string }>;
 }) {
   const { id } = React.use(params);
-  return <DrawingViewer documentId={Number(id)} />;
+  const { page } = React.use(searchParams);
+  return <DrawingViewer documentId={Number(id)} initialPage={page ? Number(page) : 1} />;
 }

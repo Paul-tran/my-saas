@@ -2,134 +2,247 @@
 
 export const dynamic = "force-dynamic";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@clerk/nextjs";
 import Sidebar from "../../components/Sidebar";
 import ErrorBanner from "../../components/ErrorBanner";
 import { useAssets } from "../../../lib/hooks/useAssets";
+import { Site, fetchSites } from "../../../lib/models/geography";
 
 const STATUS_COLOR: Record<string, string> = {
-  active: "text-green-600",
-  inactive: "text-red-500",
-  maintenance: "text-yellow-500",
+  active: "#22c55e",
+  inactive: "#ef4444",
+  maintenance: "#f59e0b",
+};
+
+const COMMISSIONING_COLOR: Record<string, string> = {
+  not_started: "#6b7280",
+  in_progress: "#3b82f6",
+  completed: "#22c55e",
+  failed: "#ef4444",
 };
 
 export default function Assets() {
-  const { assets, loading, error, handleAddAsset } = useAssets();
-  const [showForm, setShowForm] = useState(false);
-  const [tag, setTag] = useState("");
-  const [name, setName] = useState("");
-  const [type, setType] = useState("");
-  const [status, setStatus] = useState("active");
-  const [siteId, setSiteId] = useState("1");
+  const { assets, filters, loading, error, hasMore, updateFilters, nextPage, prevPage, handleDelete } = useAssets();
+  const { getToken } = useAuth();
+  const [sites, setSites] = useState<Site[]>([]);
 
-  async function handleSubmit() {
-    if (!tag) return;
-    await handleAddAsset({ tag, name, type, status, site_id: Number(siteId) });
-    setTag("");
-    setName("");
-    setType("");
-    setStatus("active");
-    setShowForm(false);
-  }
+  useEffect(() => {
+    getToken().then((t) => { if (t) fetchSites(t).then(setSites).catch(() => {}); });
+  }, [getToken]);
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div style={{ display: "flex", height: "100vh", background: "#0a0a0a", fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap');`}</style>
       <Sidebar active="assets" />
 
-      <main className="flex-1 px-8 py-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-bold text-gray-900">Assets</h2>
-          <button
-            onClick={() => setShowForm(!showForm)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
-          >
-            + Add Asset
-          </button>
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ padding: "32px 40px 20px", borderBottom: "1px solid #1a1a1a", flexShrink: 0 }}>
+          <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "28px", color: "#fff", margin: "0 0 16px" }}>Assets</h1>
+
+          {/* Filters bar */}
+          <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", alignItems: "center" }}>
+            {/* Search */}
+            <input
+              value={filters.search ?? ""}
+              onChange={(e) => updateFilters({ search: e.target.value || undefined })}
+              placeholder="Search tag or name..."
+              style={{ background: "#111", border: "1px solid #222", color: "#ccc", borderRadius: "6px", padding: "7px 12px", fontSize: "13px", width: "200px" }}
+            />
+
+            {/* Site filter */}
+            <select
+              value={filters.site_id ?? ""}
+              onChange={(e) => updateFilters({ site_id: e.target.value ? Number(e.target.value) : undefined })}
+              style={selectStyle}
+            >
+              <option value="">All Sites</option>
+              {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+
+            {/* Status filter */}
+            <select
+              value={filters.status ?? ""}
+              onChange={(e) => updateFilters({ status: e.target.value || undefined })}
+              style={selectStyle}
+            >
+              <option value="">All Statuses</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+              <option value="maintenance">Maintenance</option>
+            </select>
+
+            {/* Commissioning filter */}
+            <select
+              value={filters.commissioning_status ?? ""}
+              onChange={(e) => updateFilters({ commissioning_status: e.target.value || undefined })}
+              style={selectStyle}
+            >
+              <option value="">All Commissioning</option>
+              <option value="not_started">Not Started</option>
+              <option value="in_progress">In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="failed">Failed</option>
+            </select>
+
+            {/* Root-only toggle */}
+            <button
+              onClick={() => updateFilters({ parent_id: filters.parent_id === 0 ? undefined : 0 })}
+              style={{
+                background: filters.parent_id === 0 ? "#f5a62322" : "#111",
+                border: `1px solid ${filters.parent_id === 0 ? "#f5a623" : "#222"}`,
+                color: filters.parent_id === 0 ? "#f5a623" : "#666",
+                borderRadius: "6px", padding: "7px 12px", fontSize: "13px", cursor: "pointer",
+              }}
+            >
+              Top-level only
+            </button>
+
+            {/* Clear filters */}
+            {(filters.search || filters.site_id || filters.status || filters.commissioning_status || filters.parent_id !== undefined) && (
+              <button
+                onClick={() => updateFilters({ search: undefined, site_id: undefined, status: undefined, commissioning_status: undefined, parent_id: undefined })}
+                style={{ background: "none", border: "none", color: "#555", fontSize: "13px", cursor: "pointer" }}
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
         </div>
 
-        {error && <ErrorBanner message={error} />}
+        {/* Content */}
+        <div style={{ flex: 1, overflow: "auto", padding: "20px 40px" }}>
+          {error && <ErrorBanner message={error} />}
+          {loading && <p style={{ color: "#555" }}>Loading...</p>}
 
-        {showForm && (
-          <div className="mt-6 bg-white rounded-xl p-6 shadow-sm max-w-lg">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">New Asset</h3>
-            <div className="flex flex-col gap-4">
-              <input
-                className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                placeholder="Tag (unique ID, e.g. PUMP-001)"
-                value={tag}
-                onChange={(e) => setTag(e.target.value)}
-              />
-              <input
-                className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                placeholder="Asset name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-              />
-              <input
-                className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                placeholder="Type (e.g. Pump, Valve, Motor)"
-                value={type}
-                onChange={(e) => setType(e.target.value)}
-              />
-              <input
-                className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                placeholder="Site ID"
-                type="number"
-                value={siteId}
-                onChange={(e) => setSiteId(e.target.value)}
-              />
-              <select
-                className="border border-gray-200 rounded-lg px-4 py-2 text-sm"
-                value={status}
-                onChange={(e) => setStatus(e.target.value)}
-              >
-                <option value="active">Active</option>
-                <option value="inactive">Inactive</option>
-                <option value="maintenance">Under Maintenance</option>
-              </select>
-              <button
-                onClick={handleSubmit}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium"
-              >
-                Save Asset
-              </button>
+          {!loading && assets.length === 0 && (
+            <div style={{ textAlign: "center", padding: "80px", color: "#333" }}>
+              <div style={{ fontSize: "40px", marginBottom: "12px" }}>🏗️</div>
+              <p style={{ fontSize: "16px", color: "#555", marginBottom: "4px", fontWeight: 600 }}>No assets found</p>
+              <p style={{ fontSize: "13px", color: "#444", marginBottom: "20px" }}>
+                {filters.search || filters.status || filters.site_id ? "Try adjusting your filters." : "Open a drawing, run AI analysis, and confirm detected pins to register assets."}
+              </p>
+              <Link href="/dashboard/documents"
+                style={{ background: "#f5a623", color: "#000", borderRadius: "8px", padding: "10px 20px", fontSize: "13px", fontWeight: 700, textDecoration: "none" }}>
+                Go to Documents
+              </Link>
             </div>
-          </div>
-        )}
+          )}
 
-        {loading ? (
-          <div className="flex justify-center mt-24">
-            <p className="text-gray-400">Loading...</p>
-          </div>
-        ) : assets.length === 0 ? (
-          <div className="flex flex-col items-center justify-center mt-24 text-center">
-            <p className="text-5xl">🏗️</p>
-            <h3 className="mt-4 text-lg font-bold text-gray-800">No assets yet</h3>
-            <p className="mt-2 text-gray-500">Add your first asset to get started.</p>
-          </div>
-        ) : (
-          <div className="mt-8 bg-white rounded-xl shadow-sm">
-            <div className="grid grid-cols-4 px-6 py-3 border-b border-gray-100 text-xs font-medium text-gray-400 uppercase">
-              <span>Tag</span>
-              <span>Name / Type</span>
-              <span>Commissioning</span>
-              <span>Status</span>
-            </div>
-            {assets.map((asset) => (
-              <div key={asset.id} className="grid grid-cols-4 px-6 py-4 border-b border-gray-100">
-                <span className="text-gray-800 font-medium">{asset.tag}</span>
-                <span className="text-gray-500">{asset.name || asset.type || "—"}</span>
-                <span className="text-gray-500 capitalize">
-                  {asset.commissioning_status.replace("_", " ")}
+          {!loading && assets.length > 0 && (
+            <>
+              <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
+                    {["Tag", "Name", "Type", "Parent", "Children", "Commissioning", "Status", ""].map((h) => (
+                      <th key={h} style={{ padding: "10px 12px", fontSize: "11px", color: "#444", fontWeight: 600, textAlign: "left", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {assets.map((asset) => (
+                    <tr key={asset.id} style={{ borderBottom: "1px solid #111" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#0d0d0d")}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                      <td style={{ padding: "12px 12px" }}>
+                        <Link href={`/dashboard/assets/${asset.id}`}
+                          style={{ color: "#f5a623", fontSize: "13px", fontWeight: 700, fontFamily: "monospace", textDecoration: "none" }}>
+                          {asset.tag}
+                        </Link>
+                      </td>
+                      <td style={{ padding: "12px 12px", fontSize: "14px", color: "#ccc", fontWeight: 500 }}>{asset.name || "—"}</td>
+                      <td style={{ padding: "12px 12px", fontSize: "13px", color: "#666" }}>{asset.type || "—"}</td>
+                      <td style={{ padding: "12px 12px", fontSize: "13px", color: "#666" }}>
+                        {asset.parent_id ? (
+                          <Link href={`/dashboard/assets/${asset.parent_id}`}
+                            style={{ color: "#3b82f6", textDecoration: "none", fontSize: "12px", fontFamily: "monospace" }}>
+                            ↑ parent
+                          </Link>
+                        ) : <span style={{ color: "#333" }}>—</span>}
+                      </td>
+                      <td style={{ padding: "12px 12px", fontSize: "13px", color: "#666" }}>
+                        {asset.children_count > 0 ? (
+                          <Link href={`/dashboard/assets/${asset.id}`}
+                            style={{ color: "#22c55e", textDecoration: "none", fontSize: "12px" }}>
+                            {asset.children_count} child{asset.children_count !== 1 ? "ren" : ""}
+                          </Link>
+                        ) : <span style={{ color: "#333" }}>—</span>}
+                      </td>
+                      <td style={{ padding: "12px 12px" }}>
+                        <span style={{
+                          fontSize: "11px", fontWeight: 600, padding: "3px 8px", borderRadius: "20px",
+                          background: (COMMISSIONING_COLOR[asset.commissioning_status] ?? "#6b7280") + "22",
+                          color: COMMISSIONING_COLOR[asset.commissioning_status] ?? "#6b7280",
+                          border: `1px solid ${(COMMISSIONING_COLOR[asset.commissioning_status] ?? "#6b7280")}44`,
+                          textTransform: "capitalize",
+                        }}>
+                          {asset.commissioning_status.replace("_", " ")}
+                        </span>
+                      </td>
+                      <td style={{ padding: "12px 12px" }}>
+                        <span style={{
+                          fontSize: "11px", fontWeight: 600, padding: "3px 8px", borderRadius: "20px",
+                          background: (STATUS_COLOR[asset.status] ?? "#6b7280") + "22",
+                          color: STATUS_COLOR[asset.status] ?? "#6b7280",
+                          border: `1px solid ${(STATUS_COLOR[asset.status] ?? "#6b7280")}44`,
+                          textTransform: "capitalize",
+                        }}>
+                          {asset.status}
+                        </span>
+                      </td>
+                      <td style={{ padding: "12px 12px" }}>
+                        <button
+                          onClick={() => { if (confirm(`Delete "${asset.tag}"?`)) handleDelete(asset.id); }}
+                          style={{ background: "none", border: "none", color: "#555", fontSize: "12px", cursor: "pointer" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}
+                        >
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {/* Pagination */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "20px", paddingTop: "16px", borderTop: "1px solid #1a1a1a" }}>
+                <span style={{ fontSize: "13px", color: "#555" }}>
+                  Page {filters.page ?? 1} · {assets.length} assets shown
                 </span>
-                <span className={`text-sm font-medium capitalize ${STATUS_COLOR[asset.status] || "text-gray-500"}`}>
-                  {asset.status}
-                </span>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    onClick={prevPage}
+                    disabled={(filters.page ?? 1) <= 1}
+                    style={{ ...paginationBtnStyle, opacity: (filters.page ?? 1) <= 1 ? 0.3 : 1 }}
+                  >
+                    ← Prev
+                  </button>
+                  <button
+                    onClick={nextPage}
+                    disabled={!hasMore}
+                    style={{ ...paginationBtnStyle, opacity: !hasMore ? 0.3 : 1 }}
+                  >
+                    Next →
+                  </button>
+                </div>
               </div>
-            ))}
-          </div>
-        )}
+            </>
+          )}
+        </div>
       </main>
     </div>
   );
 }
+
+const selectStyle: React.CSSProperties = {
+  background: "#111", border: "1px solid #222", color: "#ccc",
+  borderRadius: "6px", padding: "7px 12px", fontSize: "13px",
+};
+
+const paginationBtnStyle: React.CSSProperties = {
+  background: "#111", border: "1px solid #222", color: "#ccc",
+  borderRadius: "6px", padding: "6px 14px", fontSize: "13px", cursor: "pointer",
+};
