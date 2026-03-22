@@ -1,47 +1,95 @@
 import Link from "next/link";
 
-export default function Sidebar({ active }: { active: string }) {
-  const links = [
-    { href: "/dashboard", label: "Dashboard", key: "dashboard", icon: "⊞" },
-    { href: "/dashboard/documents", label: "Documents", key: "documents", icon: "📄" },
-    { href: "/dashboard/assets", label: "Assets", key: "assets", icon: "🏗️" },
-    { href: "/dashboard/commissioning", label: "Commissioning", key: "commissioning", icon: "✅" },
-    { href: "/dashboard/work-orders", label: "Work Orders", key: "work-orders", icon: "🔧" },
-    { href: "/dashboard/billing", label: "Billing", key: "billing", icon: "💳" },
-    { href: "/dashboard/settings/geography", label: "Geography", key: "geography", icon: "📍" },
-    { href: "/dashboard/settings/systems", label: "Systems", key: "systems", icon: "🏛️" },
-    { href: "/dashboard/settings/work-order-types", label: "Settings", key: "settings", icon: "⚙️" },
-  ];
+const links = [
+  { href: "/dashboard", key: "dashboard", label: "Dashboard", icon: "dashboard" },
+  { href: "/dashboard/documents", key: "documents", label: "Documents", icon: "folder_open" },
+  { href: "/dashboard/assets", key: "assets", label: "Assets", icon: "construction" },
+  { href: "/dashboard/commissioning", key: "commissioning", label: "Commissioning", icon: "verified" },
+  { href: "/dashboard/work-orders", key: "work-orders", label: "Work Orders", icon: "assignment" },
+  { href: "/dashboard/settings/geography", key: "geography", label: "Geography", icon: "location_on" },
+  { href: "/dashboard/settings/systems", key: "systems", label: "Systems", icon: "account_tree" },
+  { href: "/dashboard/billing", key: "billing", label: "Billing", icon: "payments" },
+  { href: "/dashboard/settings/work-order-types", key: "settings", label: "Settings", icon: "settings" },
+];
 
+export default function Sidebar({ active }: { active: string }) {
   return (
-    <aside style={{ width: "240px", background: "#0a0a0a", borderRight: "1px solid #222", padding: "32px 16px", display: "flex", flexDirection: "column" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap');`}</style>
-      <span style={{ fontFamily: "'DM Serif Display', serif", fontSize: "20px", color: "#fff", padding: "0 12px", marginBottom: "40px", display: "block" }}>ConstructIQ</span>
-      <nav style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-        {links.map((link) => (
-          <Link
-            key={link.key}
-            href={link.href}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "12px",
-              padding: "10px 12px",
-              borderRadius: "6px",
-              fontSize: "14px",
-              fontFamily: "'DM Sans', sans-serif",
-              textDecoration: "none",
-              background: active === link.key ? "#1a1a1a" : "transparent",
-              color: active === link.key ? "#f5a623" : "#666",
-              fontWeight: active === link.key ? "700" : "400",
-              borderLeft: active === link.key ? "2px solid #f5a623" : "2px solid transparent",
-            }}
-          >
-            <span>{link.icon}</span>
-            {link.label}
-          </Link>
-        ))}
+    <aside style={{
+      width: "256px",
+      minWidth: "256px",
+      background: "#f3f4f5",
+      display: "flex",
+      flexDirection: "column",
+      padding: "24px 16px",
+      height: "100vh",
+      position: "sticky",
+      top: 0,
+      overflowY: "auto",
+    }}>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
+
+      {/* Logo */}
+      <div style={{ padding: "8px 16px", marginBottom: "32px" }}>
+        <h1 style={{ fontFamily: "var(--font-manrope, Manrope, sans-serif)", fontSize: "22px", fontWeight: 800, color: "#191c1d", margin: 0, letterSpacing: "-0.03em" }}>
+          ConstructIQ
+        </h1>
+        <p style={{ fontSize: "10px", fontWeight: 700, color: "#835500", textTransform: "uppercase", letterSpacing: "0.2em", margin: "2px 0 0" }}>
+          Blueprint Precision
+        </p>
+      </div>
+
+      {/* Nav */}
+      <nav style={{ display: "flex", flexDirection: "column", gap: "4px", flex: 1 }}>
+        {links.map((link) => {
+          const isActive = active === link.key;
+          return (
+            <Link
+              key={link.key}
+              href={link.href}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "12px",
+                padding: "10px 16px",
+                borderRadius: "8px",
+                fontSize: "14px",
+                fontFamily: "var(--font-manrope, Manrope, sans-serif)",
+                fontWeight: isActive ? 600 : 400,
+                textDecoration: "none",
+                background: isActive ? "#f5a623" : "transparent",
+                color: isActive ? "#ffffff" : "#524534",
+                transition: "all 0.15s ease",
+              }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "20px" }}>{link.icon}</span>
+              {link.label}
+            </Link>
+          );
+        })}
       </nav>
+
+      {/* Bottom CTA */}
+      <div style={{ marginTop: "24px", padding: "16px", background: "#ffffff", borderRadius: "12px" }}>
+        <a
+          href="/dashboard/work-orders/new"
+          style={{
+            display: "block",
+            width: "100%",
+            background: "linear-gradient(135deg, #835500, #f5a623)",
+            color: "#ffffff",
+            padding: "12px",
+            borderRadius: "8px",
+            fontWeight: 700,
+            fontSize: "11px",
+            textTransform: "uppercase",
+            letterSpacing: "0.1em",
+            textAlign: "center",
+            textDecoration: "none",
+          }}
+        >
+          New Work Order
+        </a>
+      </div>
     </aside>
   );
 }

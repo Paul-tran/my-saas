@@ -10,7 +10,7 @@ import { STATUS_LABEL, STATUS_COLOR, simulateBilling } from "../../../lib/models
 const DEV_SCENARIOS = ["trial", "active", "past_due", "canceled"] as const;
 
 export default function BillingPage() {
-  const { subscription, loading, redirecting, isActive, handleStartTrial, handleManage, reload } = useBilling();
+  const { subscription, loading, redirecting, handleStartTrial, handleManage, reload } = useBilling();
   const { getToken } = useAuth();
 
   async function handleSimulate(scenario: typeof DEV_SCENARIOS[number]) {
@@ -21,99 +21,114 @@ export default function BillingPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
       <Sidebar active="billing" />
 
-      <main className="flex-1 px-8 py-8 max-w-2xl">
-        <h2 className="text-2xl font-bold text-gray-900">Billing</h2>
-        <p className="mt-2 text-gray-500">Manage your ConstructIQ subscription.</p>
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ padding: "32px 40px 24px", background: "rgba(255,255,255,0.7)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(215,195,174,0.2)", flexShrink: 0 }}>
+          <span style={{ fontSize: "10px", fontWeight: 700, color: "#835500", textTransform: "uppercase", letterSpacing: "0.3em", display: "block", marginBottom: "4px" }}>Account</span>
+          <h1 style={{ fontFamily: "var(--font-manrope, Manrope, sans-serif)", fontSize: "32px", fontWeight: 800, color: "#191c1d", margin: 0, letterSpacing: "-0.03em" }}>Billing</h1>
+          <p style={{ color: "#524534", fontSize: "13px", margin: "4px 0 0" }}>Manage your ConstructIQ subscription.</p>
+        </div>
 
-        {loading ? (
-          <div className="mt-12 text-gray-400">Loading...</div>
-        ) : subscription ? (
-          <div className="mt-8 bg-white rounded-xl shadow-sm p-6 space-y-6">
-            {/* Status */}
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-500">Subscription Status</p>
-                <span className={`mt-1 inline-block px-3 py-1 rounded-full text-sm font-medium ${STATUS_COLOR[subscription.status] || "text-gray-500 bg-gray-100"}`}>
-                  {STATUS_LABEL[subscription.status] || subscription.status}
-                </span>
-              </div>
-              <button
-                onClick={handleManage}
-                disabled={redirecting}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium disabled:opacity-50"
-              >
-                {redirecting ? "Redirecting..." : "Manage Subscription"}
-              </button>
-            </div>
+        <div style={{ flex: 1, overflow: "auto", padding: "28px 40px" }}>
+          <div style={{ maxWidth: "600px" }}>
 
-            {/* Trial info */}
-            {subscription.status === "trialing" && subscription.trial_ends_at && (
-              <div className="bg-blue-50 rounded-lg p-4 text-sm text-blue-800">
-                Your free trial ends on{" "}
-                <strong>{new Date(subscription.trial_ends_at).toLocaleDateString()}</strong>.
-                Add a payment method before then to keep access.
-              </div>
-            )}
+            {loading && <p style={{ color: "#857462" }}>Loading...</p>}
 
-            {/* Past due warning */}
-            {subscription.status === "past_due" && (
-              <div className="bg-red-50 rounded-lg p-4 text-sm text-red-800">
-                Your last payment failed. Update your payment method to restore access.
-              </div>
-            )}
-
-            {/* Next billing */}
-            {subscription.current_period_end && subscription.status === "active" && (
-              <div className="text-sm text-gray-600">
-                Next billing date:{" "}
-                <strong>{new Date(subscription.current_period_end).toLocaleDateString()}</strong>
-              </div>
-            )}
-
-            {/* Plan details */}
-            <div className="border-t border-gray-100 pt-4 text-sm text-gray-600 space-y-1">
-              <p><span className="font-medium">Plan:</span> ConstructIQ Pro</p>
-              <p><span className="font-medium">Price:</span> $49 / user / month</p>
-              <p><span className="font-medium">Includes:</span> All modules — Documents, Assets, Commissioning, AI Analysis</p>
-            </div>
-          </div>
-        ) : (
-          /* No subscription yet */
-          <div className="mt-8 bg-white rounded-xl shadow-sm p-8 text-center space-y-4">
-            <p className="text-5xl">💳</p>
-            <h3 className="text-lg font-bold text-gray-900">No active subscription</h3>
-            <p className="text-gray-500 text-sm">
-              Start your 14-day free trial — no credit card required.
-            </p>
-            <button
-              onClick={handleStartTrial}
-              disabled={redirecting}
-              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium disabled:opacity-50"
-            >
-              {redirecting ? "Redirecting to Stripe..." : "Start Free Trial"}
-            </button>
-          </div>
-        )}
-        {/* Dev simulation panel */}
-        {process.env.NODE_ENV === "development" && (
-          <div className="mt-10 border border-dashed border-yellow-400 rounded-xl p-5 bg-yellow-50">
-            <p className="text-xs font-bold text-yellow-700 uppercase tracking-wide mb-3">Dev tools — simulate billing state</p>
-            <div className="flex gap-2 flex-wrap">
-              {DEV_SCENARIOS.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => handleSimulate(s)}
-                  className="px-3 py-1.5 rounded-lg text-sm font-medium bg-white border border-yellow-300 text-yellow-800 hover:bg-yellow-100"
-                >
-                  {s}
+            {!loading && !subscription && (
+              <div style={{ background: "#fff", border: "1px solid rgba(215,195,174,0.2)", borderRadius: "12px", padding: "48px 40px", textAlign: "center", boxShadow: "0 20px 40px rgba(25,28,29,0.05)" }}>
+                <span className="material-symbols-outlined" style={{ fontSize: "48px", color: "#d7c3ae", display: "block", marginBottom: "16px" }}>payments</span>
+                <h2 style={{ color: "#191c1d", fontFamily: "var(--font-manrope, Manrope, sans-serif)", fontSize: "22px", fontWeight: 700, margin: "0 0 8px" }}>No active subscription</h2>
+                <p style={{ color: "#524534", fontSize: "14px", margin: "0 0 28px" }}>Start your 14-day free trial — no credit card required.</p>
+                <button onClick={handleStartTrial} disabled={redirecting}
+                  style={{ background: "linear-gradient(135deg, #835500, #f5a623)", color: "#fff", border: "none", borderRadius: "8px", padding: "12px 32px", fontSize: "14px", fontWeight: 700, cursor: redirecting ? "not-allowed" : "pointer", opacity: redirecting ? 0.7 : 1 }}>
+                  {redirecting ? "Redirecting to Stripe..." : "Start Free Trial"}
                 </button>
-              ))}
-            </div>
+              </div>
+            )}
+
+            {!loading && subscription && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+                {/* Status card */}
+                <div style={{ background: "#fff", border: "1px solid rgba(215,195,174,0.2)", borderRadius: "12px", padding: "24px", boxShadow: "0 20px 40px rgba(25,28,29,0.05)" }}>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "20px" }}>
+                    <div>
+                      <p style={{ color: "#857462", fontSize: "12px", margin: "0 0 6px", textTransform: "uppercase", letterSpacing: "0.06em", fontWeight: 600 }}>Subscription Status</p>
+                      <span style={{
+                        fontSize: "12px", fontWeight: 700, padding: "4px 12px", borderRadius: "20px",
+                        background: (STATUS_COLOR[subscription.status] ?? "#857462") + "22",
+                        color: STATUS_COLOR[subscription.status] ?? "#857462",
+                      }}>
+                        {STATUS_LABEL[subscription.status] ?? subscription.status}
+                      </span>
+                    </div>
+                    <button onClick={handleManage} disabled={redirecting}
+                      style={{ background: "#f3f4f5", border: "none", color: "#524534", borderRadius: "8px", padding: "9px 16px", fontSize: "13px", fontWeight: 600, cursor: redirecting ? "not-allowed" : "pointer", opacity: redirecting ? 0.7 : 1 }}>
+                      {redirecting ? "Redirecting..." : "Manage Subscription"}
+                    </button>
+                  </div>
+
+                  <div style={{ borderTop: "1px solid rgba(215,195,174,0.15)", paddingTop: "16px", display: "flex", flexDirection: "column", gap: "8px" }}>
+                    {[
+                      { label: "Plan", value: "ConstructIQ Pro" },
+                      { label: "Price", value: "$49 / user / month" },
+                      { label: "Includes", value: "Documents, Assets, Commissioning, AI Analysis, Work Orders" },
+                    ].map((r) => (
+                      <div key={r.label} style={{ display: "flex", gap: "12px", fontSize: "13px" }}>
+                        <span style={{ color: "#857462", width: "80px", flexShrink: 0 }}>{r.label}</span>
+                        <span style={{ color: "#191c1d" }}>{r.value}</span>
+                      </div>
+                    ))}
+                    {subscription.current_period_end && subscription.status === "active" && (
+                      <div style={{ display: "flex", gap: "12px", fontSize: "13px" }}>
+                        <span style={{ color: "#857462", width: "80px", flexShrink: 0 }}>Next bill</span>
+                        <span style={{ color: "#191c1d" }}>{new Date(subscription.current_period_end).toLocaleDateString()}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Trial notice */}
+                {subscription.status === "trialing" && subscription.trial_ends_at && (
+                  <div style={{ background: "#dbeafe", border: "1px solid #bfdbfe", borderRadius: "10px", padding: "16px 20px" }}>
+                    <p style={{ color: "#1d4ed8", fontSize: "13px", margin: 0 }}>
+                      Your free trial ends on <strong>{new Date(subscription.trial_ends_at).toLocaleDateString()}</strong>. Add a payment method before then to keep access.
+                    </p>
+                  </div>
+                )}
+
+                {/* Past due warning */}
+                {subscription.status === "past_due" && (
+                  <div style={{ background: "#fee2e2", border: "1px solid #fecaca", borderRadius: "10px", padding: "16px 20px" }}>
+                    <p style={{ color: "#dc2626", fontSize: "13px", margin: 0 }}>
+                      Your last payment failed. Update your payment method to restore access.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Dev simulation panel */}
+            {process.env.NODE_ENV === "development" && (
+              <div style={{ marginTop: "32px", border: "1px dashed rgba(131,85,0,0.3)", borderRadius: "10px", padding: "20px", background: "rgba(245,166,35,0.05)" }}>
+                <p style={{ fontSize: "11px", fontWeight: 700, color: "#835500", textTransform: "uppercase", letterSpacing: "0.08em", margin: "0 0 12px" }}>
+                  Dev Tools — Simulate Billing State
+                </p>
+                <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                  {DEV_SCENARIOS.map((s) => (
+                    <button key={s} onClick={() => handleSimulate(s)}
+                      style={{ background: "#fff", border: "1px solid rgba(131,85,0,0.3)", color: "#835500", borderRadius: "6px", padding: "6px 14px", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </main>
     </div>
   );

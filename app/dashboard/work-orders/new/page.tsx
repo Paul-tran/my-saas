@@ -21,11 +21,9 @@ export default function NewWorkOrderPage() {
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Step: 1 = pick type, 2 = fill form
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedTypeId, setSelectedTypeId] = useState<number | null>(null);
 
-  // Geography state
   const [sites, setSites] = useState<GeoOption[]>([]);
   const [locations, setLocations] = useState<GeoOption[]>([]);
   const [units, setUnits] = useState<GeoOption[]>([]);
@@ -38,7 +36,6 @@ export default function NewWorkOrderPage() {
   const [partitionId, setPartitionId] = useState("");
   const [assetId, setAssetId] = useState("");
 
-  // Core fields
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
@@ -47,40 +44,34 @@ export default function NewWorkOrderPage() {
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
 
-  // Corrective fields
   const [faultDescription, setFaultDescription] = useState("");
   const [failureCause, setFailureCause] = useState("unknown");
   const [resolution, setResolution] = useState("");
 
-  // PM fields
   const [recurrence, setRecurrence] = useState("one_off");
   const [lastServiced, setLastServiced] = useState("");
   const [pmItems, setPmItems] = useState<string[]>([""]);
 
-  // Inspection fields
   const [conditionRating, setConditionRating] = useState("");
   const [signedOffBy, setSignedOffBy] = useState("");
   const [inspectionItems, setInspectionItems] = useState<string[]>([""]);
 
-  // Operations fields
   const [shiftStart, setShiftStart] = useState("");
   const [shiftEnd, setShiftEnd] = useState("");
   const [steps, setSteps] = useState<string[]>([""]);
 
   const selectedType = woTypes.find((t) => t.id === selectedTypeId);
 
-  // Load sites on mount
   useEffect(() => {
     (async () => {
       try {
         const token = await getToken();
         const data = await apiFetch<GeoOption[]>(`/api/v1/projects/${PROJECT_ID}/sites`, token!);
         setSites(data);
-      } catch { /* no sites yet */ }
+      } catch { }
     })();
   }, []);
 
-  // Cascade: site → locations
   useEffect(() => {
     setLocationId(""); setUnitId(""); setPartitionId(""); setLocations([]); setUnits([]); setPartitions([]);
     if (!siteId) { setAssets([]); setAssetId(""); return; }
@@ -97,7 +88,6 @@ export default function NewWorkOrderPage() {
     })();
   }, [siteId]);
 
-  // Cascade: location → units
   useEffect(() => {
     setUnitId(""); setPartitionId(""); setUnits([]); setPartitions([]);
     if (!locationId) return;
@@ -110,7 +100,6 @@ export default function NewWorkOrderPage() {
     })();
   }, [locationId]);
 
-  // Cascade: unit → partitions
   useEffect(() => {
     setPartitionId(""); setPartitions([]);
     if (!unitId) return;
@@ -128,14 +117,11 @@ export default function NewWorkOrderPage() {
     if (!selectedType) return;
     setError(null);
     setSubmitting(true);
-
     try {
       const token = await getToken();
       const payload: WorkOrderCreate = {
         wo_type_id: selectedType.id,
-        title,
-        description,
-        priority: priority as any,
+        title, description, priority: priority as any,
         site_id: siteId ? Number(siteId) : undefined,
         location_id: locationId ? Number(locationId) : undefined,
         unit_id: unitId ? Number(unitId) : undefined,
@@ -146,29 +132,15 @@ export default function NewWorkOrderPage() {
         due_date: dueDate || undefined,
         notes,
       };
-
       if (selectedType.category === "corrective") {
         payload.corrective_detail = { fault_description: faultDescription, failure_cause: failureCause as any, resolution };
       } else if (selectedType.category === "preventive") {
-        payload.pm_detail = {
-          recurrence: recurrence as any,
-          last_serviced_date: lastServiced || undefined,
-          checklist_items: pmItems.filter(Boolean).map((d, i) => ({ description: d, order_index: i })),
-        };
+        payload.pm_detail = { recurrence: recurrence as any, last_serviced_date: lastServiced || undefined, checklist_items: pmItems.filter(Boolean).map((d, i) => ({ description: d, order_index: i })) };
       } else if (selectedType.category === "inspection") {
-        payload.inspection_detail = {
-          condition_rating: conditionRating ? Number(conditionRating) : undefined,
-          signed_off_by: signedOffBy || undefined,
-          checklist_items: inspectionItems.filter(Boolean).map((d, i) => ({ description: d, order_index: i })),
-        };
+        payload.inspection_detail = { condition_rating: conditionRating ? Number(conditionRating) : undefined, signed_off_by: signedOffBy || undefined, checklist_items: inspectionItems.filter(Boolean).map((d, i) => ({ description: d, order_index: i })) };
       } else if (selectedType.category === "operations") {
-        payload.operations_detail = {
-          shift_start: shiftStart || undefined,
-          shift_end: shiftEnd || undefined,
-          steps: steps.filter(Boolean).map((d, i) => ({ description: d, order_index: i })),
-        };
+        payload.operations_detail = { shift_start: shiftStart || undefined, shift_end: shiftEnd || undefined, steps: steps.filter(Boolean).map((d, i) => ({ description: d, order_index: i })) };
       }
-
       const wo = await createWorkOrder(PROJECT_ID, payload, token!);
       router.push(`/dashboard/work-orders/${wo.id}`);
     } catch (e: any) {
@@ -183,23 +155,24 @@ export default function NewWorkOrderPage() {
     const byCategory = ["corrective", "preventive", "inspection", "operations"] as const;
 
     return (
-      <div style={{ display: "flex", height: "100vh", background: "#0a0a0a", fontFamily: "'DM Sans', sans-serif" }}>
-        <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap');`}</style>
+      <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
+        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
         <Sidebar active="work-orders" />
         <main style={{ flex: 1, overflow: "auto", padding: "40px" }}>
           <div style={{ maxWidth: "700px" }}>
-            <button onClick={() => router.push("/dashboard/work-orders")} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "13px", marginBottom: "16px", padding: 0 }}>
-              ← Back to Work Orders
+            <button onClick={() => router.push("/dashboard/work-orders")} style={{ background: "none", border: "none", color: "#857462", cursor: "pointer", fontSize: "13px", marginBottom: "16px", padding: 0, display: "flex", alignItems: "center", gap: "4px" }}>
+              <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>arrow_back</span> Back to Work Orders
             </button>
-            <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "28px", color: "#fff", margin: "0 0 8px" }}>New Work Order</h1>
-            <p style={{ color: "#555", fontSize: "14px", margin: "0 0 32px" }}>Select the type of work order you want to create.</p>
+            <span style={{ fontSize: "10px", fontWeight: 700, color: "#835500", textTransform: "uppercase", letterSpacing: "0.3em", display: "block", marginBottom: "4px" }}>Work Orders</span>
+            <h1 style={{ fontFamily: "var(--font-manrope, Manrope, sans-serif)", fontSize: "28px", fontWeight: 800, color: "#191c1d", margin: "0 0 8px", letterSpacing: "-0.03em" }}>New Work Order</h1>
+            <p style={{ color: "#524534", fontSize: "14px", margin: "0 0 32px" }}>Select the type of work order you want to create.</p>
 
-            {typesLoading && <p style={{ color: "#555" }}>Loading types...</p>}
+            {typesLoading && <p style={{ color: "#857462" }}>Loading types...</p>}
 
             {!typesLoading && activeTypes.length === 0 && (
-              <div style={{ padding: "32px", border: "1px dashed #222", borderRadius: "10px", textAlign: "center", color: "#555" }}>
+              <div style={{ padding: "32px", border: "1px dashed rgba(215,195,174,0.4)", borderRadius: "10px", textAlign: "center", color: "#857462" }}>
                 No active work order types found.{" "}
-                <a href="/dashboard/settings/work-order-types" style={{ color: "#f5a623" }}>Configure types in Settings →</a>
+                <a href="/dashboard/settings/work-order-types" style={{ color: "#835500" }}>Configure types in Settings →</a>
               </div>
             )}
 
@@ -214,21 +187,18 @@ export default function NewWorkOrderPage() {
                   <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {types.map((t) => (
                       <button key={t.id} onClick={() => { setSelectedTypeId(t.id); setStep(2); }}
-                        style={{
-                          background: "#111", border: "1px solid #1a1a1a", borderRadius: "10px", padding: "18px 20px",
-                          cursor: "pointer", textAlign: "left", transition: "border-color 0.15s",
-                        }}
-                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#f5a623")}
-                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#1a1a1a")}
+                        style={{ background: "#fff", border: "1px solid rgba(215,195,174,0.2)", borderRadius: "10px", padding: "18px 20px", cursor: "pointer", textAlign: "left", boxShadow: "0 2px 8px rgba(25,28,29,0.04)", transition: "box-shadow 0.15s" }}
+                        onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 4px 16px rgba(131,85,0,0.1)")}
+                        onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "0 2px 8px rgba(25,28,29,0.04)")}
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ color: "#fff", fontWeight: 600, fontSize: "14px" }}>{t.name}</span>
-                          <div style={{ display: "flex", gap: "10px", fontSize: "12px", color: "#444" }}>
+                          <span style={{ color: "#191c1d", fontWeight: 600, fontSize: "14px" }}>{t.name}</span>
+                          <div style={{ display: "flex", gap: "10px", fontSize: "12px", color: "#857462" }}>
                             {t.asset_required && <span>Asset required</span>}
                             {t.geography_required && <span>Site required</span>}
                           </div>
                         </div>
-                        <p style={{ color: "#555", fontSize: "12px", margin: "4px 0 0" }}>
+                        <p style={{ color: "#524534", fontSize: "12px", margin: "4px 0 0" }}>
                           {cat === "corrective" && "Log a fault or breakdown. Records fault description, cause, and resolution."}
                           {cat === "preventive" && "Schedule preventive maintenance with a checklist and recurrence."}
                           {cat === "inspection" && "Conduct an inspection with pass/fail checklist and condition rating."}
@@ -248,28 +218,27 @@ export default function NewWorkOrderPage() {
 
   // ── Step 2: fill form ──────────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#0a0a0a", fontFamily: "'DM Sans', sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap');`}</style>
+    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
       <Sidebar active="work-orders" />
       <main style={{ flex: 1, overflow: "auto", padding: "40px" }}>
         <div style={{ maxWidth: "760px" }}>
-          <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#555", cursor: "pointer", fontSize: "13px", marginBottom: "16px", padding: 0 }}>
+          <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#857462", cursor: "pointer", fontSize: "13px", marginBottom: "16px", padding: 0 }}>
             ← Change Type
           </button>
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "32px" }}>
-            <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: selectedType ? CATEGORY_COLOR[selectedType.category] : "#555", display: "inline-block" }} />
+            <span style={{ width: "10px", height: "10px", borderRadius: "50%", background: selectedType ? CATEGORY_COLOR[selectedType.category] : "#d7c3ae", display: "inline-block" }} />
             <div>
-              <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "24px", color: "#fff", margin: 0 }}>{selectedType?.name}</h1>
-              <p style={{ color: "#555", fontSize: "13px", margin: "2px 0 0" }}>{selectedType ? CATEGORY_LABEL[selectedType.category] : ""}</p>
+              <h1 style={{ fontFamily: "var(--font-manrope, Manrope, sans-serif)", fontSize: "24px", fontWeight: 800, color: "#191c1d", margin: 0, letterSpacing: "-0.02em" }}>{selectedType?.name}</h1>
+              <p style={{ color: "#524534", fontSize: "13px", margin: "2px 0 0" }}>{selectedType ? CATEGORY_LABEL[selectedType.category] : ""}</p>
             </div>
           </div>
 
           {error && <ErrorBanner message={error} />}
 
-          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+          <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-            {/* Core details */}
             <Section title="Work Order Details">
               <Field label="Title *">
                 <input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Brief description of the work required" />
@@ -300,7 +269,6 @@ export default function NewWorkOrderPage() {
               </TwoCol>
             </Section>
 
-            {/* Geography */}
             <Section title={`Location${selectedType?.geography_required ? " *" : ""}`}
               hint={selectedType?.geography_required ? "A site is required for this work order type." : "Optionally specify where this work is taking place."}>
               <TwoCol>
@@ -333,7 +301,6 @@ export default function NewWorkOrderPage() {
               </TwoCol>
             </Section>
 
-            {/* Asset */}
             <Section title={`Asset${selectedType?.asset_required ? " *" : ""}`}
               hint={selectedType?.asset_required ? "An asset is required for this work order type." : "Optionally link this work order to a specific asset."}>
               <Field label={`Asset${selectedType?.asset_required ? " *" : ""}`}>
@@ -343,11 +310,10 @@ export default function NewWorkOrderPage() {
                 </select>
               </Field>
               {selectedType?.asset_required && !siteId && (
-                <p style={{ fontSize: "12px", color: "#f59e0b", margin: "4px 0 0" }}>⚠ Select a site first to see available assets.</p>
+                <p style={{ fontSize: "12px", color: "#a16207", margin: "4px 0 0" }}>⚠ Select a site first to see available assets.</p>
               )}
             </Section>
 
-            {/* Category-specific fields */}
             {selectedType?.category === "corrective" && (
               <Section title="Fault Details">
                 <Field label="Fault Description">
@@ -431,21 +397,19 @@ export default function NewWorkOrderPage() {
               </Section>
             )}
 
-            {/* Notes */}
             <Section title="Additional Notes">
               <Field label="">
                 <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} placeholder="Any additional notes..." />
               </Field>
             </Section>
 
-            {/* Submit */}
             <div style={{ display: "flex", gap: "12px", paddingBottom: "40px" }}>
               <button type="button" onClick={() => router.push("/dashboard/work-orders")}
-                style={{ flex: 1, background: "none", border: "1px solid #222", color: "#555", borderRadius: "8px", padding: "12px", cursor: "pointer", fontSize: "14px" }}>
+                style={{ flex: 1, background: "none", border: "1px solid rgba(215,195,174,0.4)", color: "#857462", borderRadius: "8px", padding: "12px", cursor: "pointer", fontSize: "14px" }}>
                 Cancel
               </button>
               <button type="submit" disabled={submitting}
-                style={{ flex: 2, background: "#f5a623", border: "none", color: "#000", borderRadius: "8px", padding: "12px", cursor: submitting ? "not-allowed" : "pointer", fontSize: "14px", fontWeight: 700, opacity: submitting ? 0.7 : 1 }}>
+                style={{ flex: 2, background: "linear-gradient(135deg, #835500, #f5a623)", border: "none", color: "#fff", borderRadius: "8px", padding: "12px", cursor: submitting ? "not-allowed" : "pointer", fontSize: "14px", fontWeight: 700, opacity: submitting ? 0.7 : 1 }}>
                 {submitting ? "Creating..." : "Create Work Order"}
               </button>
             </div>
@@ -460,10 +424,10 @@ export default function NewWorkOrderPage() {
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: "10px", padding: "24px", display: "flex", flexDirection: "column", gap: "14px" }}>
-      <div style={{ borderBottom: "1px solid #1a1a1a", paddingBottom: "12px" }}>
-        <h3 style={{ color: "#fff", fontSize: "14px", fontWeight: 700, margin: 0 }}>{title}</h3>
-        {hint && <p style={{ color: "#555", fontSize: "12px", margin: "4px 0 0" }}>{hint}</p>}
+    <div style={{ background: "#fff", border: "1px solid rgba(215,195,174,0.2)", borderRadius: "10px", padding: "24px", display: "flex", flexDirection: "column", gap: "14px", boxShadow: "0 2px 8px rgba(25,28,29,0.04)" }}>
+      <div style={{ borderBottom: "1px solid rgba(215,195,174,0.15)", paddingBottom: "12px" }}>
+        <h3 style={{ color: "#191c1d", fontSize: "14px", fontWeight: 700, margin: 0 }}>{title}</h3>
+        {hint && <p style={{ color: "#857462", fontSize: "12px", margin: "4px 0 0" }}>{hint}</p>}
       </div>
       {children}
     </div>
@@ -476,17 +440,16 @@ function TwoCol({ children }: { children: React.ReactNode }) {
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px", color: "#888" }}>
+    <label style={{ display: "flex", flexDirection: "column", gap: "6px", fontSize: "13px", color: "#857462" }}>
       {label && <span>{label}</span>}
       <style>{`
         .wo-input input, .wo-input textarea, .wo-input select {
-          background: #0a0a0a; border: 1px solid #222; color: #fff; border-radius: 6px;
-          padding: 9px 12px; font-size: 13px; font-family: 'DM Sans', sans-serif;
-          width: 100%; box-sizing: border-box; resize: vertical;
+          background: #f3f4f5; border: none; color: #191c1d; border-radius: 6px;
+          padding: 9px 12px; font-size: 13px; font-family: var(--font-inter, Inter, sans-serif);
+          width: 100%; box-sizing: border-box; resize: vertical; outline: none;
         }
-        .wo-input input:focus, .wo-input textarea:focus, .wo-input select:focus { outline: none; border-color: #f5a623; }
+        .wo-input input:focus, .wo-input textarea:focus, .wo-input select:focus { box-shadow: 0 0 0 2px rgba(245,166,35,0.3); }
         .wo-input input:disabled, .wo-input select:disabled { opacity: 0.4; cursor: not-allowed; }
-        .wo-input select option { background: #111; }
       `}</style>
       <div className="wo-input">{children}</div>
     </label>
@@ -498,21 +461,24 @@ function ChecklistBuilder({ items, onChange, placeholder }: { items: string[]; o
     <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
       {items.map((item, i) => (
         <div key={i} style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          <span style={{ color: "#444", fontSize: "12px", width: "20px", textAlign: "right", flexShrink: 0 }}>{i + 1}.</span>
+          <span style={{ color: "#d7c3ae", fontSize: "12px", width: "20px", textAlign: "right", flexShrink: 0 }}>{i + 1}.</span>
           <input
             value={item}
             onChange={(e) => { const next = [...items]; next[i] = e.target.value; onChange(next); }}
             placeholder={placeholder}
-            style={{ flex: 1, background: "#0a0a0a", border: "1px solid #222", color: "#fff", borderRadius: "6px", padding: "7px 10px", fontSize: "13px" }}
+            style={{ flex: 1, background: "#f3f4f5", border: "none", color: "#191c1d", borderRadius: "6px", padding: "7px 10px", fontSize: "13px", outline: "none" }}
           />
           {items.length > 1 && (
             <button type="button" onClick={() => onChange(items.filter((_, j) => j !== i))}
-              style={{ background: "none", border: "none", color: "#444", cursor: "pointer", fontSize: "16px", padding: "0 4px" }}>✕</button>
+              style={{ background: "none", border: "none", color: "#d7c3ae", cursor: "pointer", fontSize: "16px", padding: "0 4px" }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")}
+              onMouseLeave={(e) => (e.currentTarget.style.color = "#d7c3ae")}
+            >✕</button>
           )}
         </div>
       ))}
       <button type="button" onClick={() => onChange([...items, ""])}
-        style={{ background: "none", border: "1px dashed #222", color: "#555", borderRadius: "6px", padding: "7px", fontSize: "12px", cursor: "pointer", marginTop: "2px" }}>
+        style={{ background: "none", border: "1px dashed rgba(215,195,174,0.4)", color: "#857462", borderRadius: "6px", padding: "7px", fontSize: "12px", cursor: "pointer", marginTop: "2px" }}>
         + Add item
       </button>
     </div>

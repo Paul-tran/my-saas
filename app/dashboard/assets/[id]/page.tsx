@@ -17,23 +17,28 @@ import {
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const PROJECT_ID = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
 
-const STATUS_COLOR: Record<string, string> = {
-  active: "#22c55e", inactive: "#ef4444", maintenance: "#f59e0b",
+const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
+  active:      { bg: "#dcfce7", color: "#15803d" },
+  inactive:    { bg: "#fee2e2", color: "#dc2626" },
+  maintenance: { bg: "#fef9c3", color: "#a16207" },
 };
-const COMMISSIONING_COLOR: Record<string, string> = {
-  not_started: "#6b7280", in_progress: "#3b82f6", completed: "#22c55e", failed: "#ef4444",
+const COMMISSIONING_STYLE: Record<string, { bg: string; color: string }> = {
+  not_started: { bg: "#f3f4f5", color: "#524534" },
+  in_progress:  { bg: "#dbeafe", color: "#1d4ed8" },
+  completed:    { bg: "#dcfce7", color: "#15803d" },
+  failed:       { bg: "#fee2e2", color: "#dc2626" },
 };
-const DOC_STATUS_COLOR: Record<string, string> = {
-  draft: "#6b7280", under_review: "#f59e0b", approved: "#22c55e", superseded: "#ef4444",
+const DOC_STATUS_STYLE: Record<string, { bg: string; color: string }> = {
+  draft:        { bg: "#f3f4f5", color: "#524534" },
+  under_review: { bg: "#fef9c3", color: "#a16207" },
+  approved:     { bg: "#dcfce7", color: "#15803d" },
+  superseded:   { bg: "#fee2e2", color: "#dc2626" },
 };
 
-function Badge({ value, colorMap }: { value: string; colorMap: Record<string, string> }) {
-  const color = colorMap[value] ?? "#6b7280";
+function Badge({ value, styleMap }: { value: string; styleMap: Record<string, { bg: string; color: string }> }) {
+  const s = styleMap[value] ?? { bg: "#f3f4f5", color: "#524534" };
   return (
-    <span style={{
-      fontSize: "12px", fontWeight: 600, padding: "3px 10px", borderRadius: "20px",
-      background: color + "22", color, border: `1px solid ${color}44`, textTransform: "capitalize",
-    }}>
+    <span style={{ fontSize: "11px", fontWeight: 600, padding: "3px 10px", borderRadius: "20px", background: s.bg, color: s.color, textTransform: "capitalize" }}>
       {value.replace(/_/g, " ")}
     </span>
   );
@@ -41,14 +46,13 @@ function Badge({ value, colorMap }: { value: string; colorMap: Record<string, st
 
 function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", gap: "12px", fontSize: "13px", padding: "8px 0", borderBottom: "1px solid #111" }}>
-      <span style={{ color: "#555", width: "140px", flexShrink: 0 }}>{label}</span>
-      <span style={{ color: "#ccc" }}>{value ?? <span style={{ color: "#333" }}>—</span>}</span>
+    <div style={{ display: "flex", gap: "12px", fontSize: "13px", padding: "8px 0", borderBottom: "1px solid rgba(215,195,174,0.12)" }}>
+      <span style={{ color: "#857462", width: "140px", flexShrink: 0 }}>{label}</span>
+      <span style={{ color: "#191c1d" }}>{value ?? <span style={{ color: "#d7c3ae" }}>—</span>}</span>
     </div>
   );
 }
 
-// Reusable inline asset search picker
 function AssetPicker({
   excludeIds,
   onSelect,
@@ -87,38 +91,35 @@ function AssetPicker({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={placeholder}
-        style={{
-          width: "100%", boxSizing: "border-box", background: "#0a0a0a", border: "1px solid #333",
-          borderRadius: "8px", padding: "8px 12px", color: "#ccc", fontSize: "13px", outline: "none",
-        }}
+        style={{ width: "100%", boxSizing: "border-box", background: "#f3f4f5", border: "none", borderRadius: "8px", padding: "8px 12px", color: "#191c1d", fontSize: "13px", outline: "none" }}
       />
-      {searching && <p style={{ color: "#555", fontSize: "12px", margin: "6px 0 0" }}>Searching…</p>}
+      {searching && <p style={{ color: "#857462", fontSize: "12px", margin: "6px 0 0" }}>Searching…</p>}
       {results.length > 0 && (
-        <div style={{ marginTop: "6px", border: "1px solid #222", borderRadius: "8px", overflow: "hidden" }}>
-          {results.map((a) => (
-            <button
-              key={a.id}
-              onClick={() => onSelect(a)}
-              style={{
-                display: "flex", alignItems: "center", gap: "8px", width: "100%", padding: "8px 12px",
-                background: "none", border: "none", borderBottom: "1px solid #1a1a1a", cursor: "pointer", textAlign: "left",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "#161616")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
-            >
-              <span style={{ color: "#f5a623", fontFamily: "monospace", fontWeight: 700, fontSize: "13px" }}>{a.tag}</span>
-              {a.name && <span style={{ color: "#666", fontSize: "12px" }}>{a.name}</span>}
-              <Badge value={a.status} colorMap={STATUS_COLOR} />
-            </button>
-          ))}
+        <div style={{ marginTop: "6px", border: "1px solid rgba(215,195,174,0.2)", borderRadius: "8px", overflow: "hidden" }}>
+          {results.map((a) => {
+            const s = STATUS_STYLE[a.status] ?? { bg: "#f3f4f5", color: "#524534" };
+            return (
+              <button
+                key={a.id}
+                onClick={() => onSelect(a)}
+                style={{ display: "flex", alignItems: "center", gap: "8px", width: "100%", padding: "8px 12px", background: "none", border: "none", borderBottom: "1px solid rgba(215,195,174,0.15)", cursor: "pointer", textAlign: "left" }}
+                onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f4f5")}
+                onMouseLeave={(e) => (e.currentTarget.style.background = "none")}
+              >
+                <span style={{ color: "#835500", fontFamily: "monospace", fontWeight: 700, fontSize: "13px" }}>{a.tag}</span>
+                {a.name && <span style={{ color: "#857462", fontSize: "12px" }}>{a.name}</span>}
+                <span style={{ marginLeft: "auto", fontSize: "11px", fontWeight: 600, padding: "2px 8px", borderRadius: "20px", background: s.bg, color: s.color }}>{a.status}</span>
+              </button>
+            );
+          })}
         </div>
       )}
       {!searching && query.trim() && results.length === 0 && (
-        <p style={{ color: "#444", fontSize: "12px", margin: "6px 0 0" }}>No matching assets found.</p>
+        <p style={{ color: "#857462", fontSize: "12px", margin: "6px 0 0" }}>No matching assets found.</p>
       )}
       <button
         onClick={onCancel}
-        style={{ marginTop: "8px", background: "none", border: "none", color: "#555", fontSize: "12px", cursor: "pointer", padding: 0 }}
+        style={{ marginTop: "8px", background: "none", border: "none", color: "#857462", fontSize: "12px", cursor: "pointer", padding: 0 }}
       >
         Cancel
       </button>
@@ -144,7 +145,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
   const [sysGroup, setSysGroup] = useState<SystemGroup | null>(null);
   const [subgroup, setSubgroup] = useState<SystemSubgroup | null>(null);
 
-  // System edit state
   const [editingSystem, setEditingSystem] = useState(false);
   const [allDisciplines, setAllDisciplines] = useState<SystemDiscipline[]>([]);
   const [editGroupsList, setEditGroupsList] = useState<SystemGroup[]>([]);
@@ -157,7 +157,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
   const [error, setError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Relationship assignment UI
   const [showAssignParent, setShowAssignParent] = useState(false);
   const [showAddChild, setShowAddChild] = useState(false);
 
@@ -186,7 +185,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
         if (a.unit_id) geoFetches.push(fetchUnit(a.unit_id, token).then(setUnit).catch(() => {}));
         if (a.partition_id) geoFetches.push(fetchPartition(a.partition_id, token).then(setPartition).catch(() => {}));
 
-        // Resolve system path: subgroup → group → discipline
         if (a.subgroup_id) {
           geoFetches.push(
             fetchSubgroup(a.subgroup_id, token).then(async (sg) => {
@@ -219,9 +217,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
       await updateAsset(asset.id, { parent_id: null }, token);
       setAsset({ ...asset, parent_id: null });
       setParent(null);
-    } catch (e: any) {
-      setSaveError(e.message);
-    }
+    } catch (e: any) { setSaveError(e.message); }
   }
 
   async function handleAssignParent(selected: Asset) {
@@ -233,9 +229,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
       setAsset({ ...asset, parent_id: selected.id });
       setParent(selected);
       setShowAssignParent(false);
-    } catch (e: any) {
-      setSaveError(e.message);
-    }
+    } catch (e: any) { setSaveError(e.message); }
   }
 
   async function handleAddChild(selected: Asset) {
@@ -245,14 +239,11 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     try {
       const updated = await updateAsset(selected.id, { parent_id: asset.id }, token);
       setChildren((prev) => {
-        const exists = prev.find((c) => c.id === selected.id);
-        if (exists) return prev;
+        if (prev.find((c) => c.id === selected.id)) return prev;
         return [...prev, updated];
       });
       setShowAddChild(false);
-    } catch (e: any) {
-      setSaveError(e.message);
-    }
+    } catch (e: any) { setSaveError(e.message); }
   }
 
   async function handleRemoveChild(childId: number) {
@@ -261,9 +252,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     try {
       await updateAsset(childId, { parent_id: null }, token);
       setChildren((prev) => prev.filter((c) => c.id !== childId));
-    } catch (e: any) {
-      setSaveError(e.message);
-    }
+    } catch (e: any) { setSaveError(e.message); }
   }
 
   async function openSystemEdit() {
@@ -271,7 +260,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     if (!token) return;
     const discs = await fetchDisciplines(PROJECT_ID, token).catch(() => []);
     setAllDisciplines(discs);
-    // Pre-populate with current values if set
     if (discipline && sysGroup && subgroup) {
       setEditDisciplineId(String(discipline.id));
       const gs = await fetchGroups(discipline.id, token).catch(() => []);
@@ -289,8 +277,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 
   async function handleEditDisciplineChange(id: string) {
     setEditDisciplineId(id);
-    setEditGroupId(""); setEditSubgroupId("");
-    setEditGroupsList([]); setEditSubgroupsList([]);
+    setEditGroupId(""); setEditSubgroupId(""); setEditGroupsList([]); setEditSubgroupsList([]);
     if (!id) return;
     const token = await getToken();
     if (!token) return;
@@ -315,7 +302,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     try {
       await updateAsset(asset.id, { subgroup_id: Number(editSubgroupId) }, token);
       setAsset({ ...asset, subgroup_id: Number(editSubgroupId) });
-      // Resolve and update displayed names
       const sg = await fetchSubgroup(Number(editSubgroupId), token);
       setSubgroup(sg);
       const g = await fetchGroup(sg.group_id, token);
@@ -323,67 +309,69 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
       const d = await fetchDiscipline(g.discipline_id, token);
       setDiscipline(d);
       setEditingSystem(false);
-    } catch (e: any) {
-      setSaveError(e.message);
-    }
+    } catch (e: any) { setSaveError(e.message); }
   }
 
+  const cardStyle = { background: "#fff", border: "1px solid rgba(215,195,174,0.2)", borderRadius: "12px", padding: "24px", boxShadow: "0 2px 8px rgba(25,28,29,0.05)" };
+
   if (loading) return (
-    <div style={{ display: "flex", height: "100vh", background: "#0a0a0a" }}>
+    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)" }}>
       <Sidebar active="assets" />
       <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "#555" }}>Loading...</p>
+        <p style={{ color: "#857462" }}>Loading...</p>
       </main>
     </div>
   );
 
   if (error || !asset) return (
-    <div style={{ display: "flex", height: "100vh", background: "#0a0a0a" }}>
+    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)" }}>
       <Sidebar active="assets" />
       <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "#ef4444" }}>{error ?? "Asset not found"}</p>
+        <p style={{ color: "#dc2626" }}>{error ?? "Asset not found"}</p>
       </main>
     </div>
   );
 
-  // IDs to exclude from pickers (self + existing children + current parent)
   const excludeFromParentPicker = [asset.id, ...children.map((c) => c.id)];
   const excludeFromChildPicker = [asset.id, ...(asset.parent_id ? [asset.parent_id] : []), ...children.map((c) => c.id)];
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#0a0a0a", fontFamily: "'DM Sans', sans-serif" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=DM+Serif+Display&display=swap');`}</style>
+    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
+      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
       <Sidebar active="assets" />
 
-      <main style={{ flex: 1, overflow: "auto", padding: "40px" }}>
-        <div style={{ maxWidth: "960px" }}>
-
-          <Link href="/dashboard/assets" style={{ color: "#555", fontSize: "13px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "6px", marginBottom: "24px" }}>
-            ← Back to Assets
+      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+        {/* Header */}
+        <div style={{ padding: "24px 40px", background: "rgba(255,255,255,0.7)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(215,195,174,0.2)", flexShrink: 0 }}>
+          <Link href="/dashboard/assets" style={{ color: "#857462", fontSize: "13px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>
+            <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>arrow_back</span> Back to Assets
           </Link>
-
-          <div style={{ marginBottom: "32px" }}>
-            <h1 style={{ fontFamily: "'DM Serif Display', serif", fontSize: "32px", color: "#fff", margin: "0 0 10px" }}>
-              <span style={{ color: "#f5a623", fontFamily: "monospace" }}>{asset.tag}</span>
-              {asset.name && <span style={{ color: "#ccc", marginLeft: "12px", fontSize: "24px" }}>{asset.name}</span>}
-            </h1>
-            <div style={{ display: "flex", gap: "8px" }}>
-              <Badge value={asset.status} colorMap={STATUS_COLOR} />
-              <Badge value={asset.commissioning_status} colorMap={COMMISSIONING_COLOR} />
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div>
+              <h1 style={{ fontFamily: "var(--font-manrope, Manrope, sans-serif)", fontSize: "28px", fontWeight: 800, color: "#191c1d", margin: "0 0 8px", letterSpacing: "-0.03em" }}>
+                <span style={{ color: "#835500", fontFamily: "monospace" }}>{asset.tag}</span>
+                {asset.name && <span style={{ color: "#524534", marginLeft: "12px", fontSize: "22px", fontWeight: 600 }}>{asset.name}</span>}
+              </h1>
+              <div style={{ display: "flex", gap: "8px" }}>
+                <Badge value={asset.status} styleMap={STATUS_STYLE} />
+                <Badge value={asset.commissioning_status} styleMap={COMMISSIONING_STYLE} />
+              </div>
             </div>
           </div>
+        </div>
 
+        <div style={{ flex: 1, overflow: "auto", padding: "24px 40px" }}>
           {saveError && (
-            <div style={{ background: "#ef444422", border: "1px solid #ef444444", borderRadius: "8px", padding: "12px 16px", marginBottom: "16px", color: "#fca5a5", fontSize: "13px", display: "flex", justifyContent: "space-between" }}>
+            <div style={{ background: "#fee2e2", border: "1px solid #fecaca", borderRadius: "8px", padding: "12px 16px", marginBottom: "16px", color: "#dc2626", fontSize: "13px", display: "flex", justifyContent: "space-between" }}>
               <span>{saveError}</span>
-              <button onClick={() => setSaveError(null)} style={{ background: "none", border: "none", color: "#fca5a5", cursor: "pointer" }}>✕</button>
+              <button onClick={() => setSaveError(null)} style={{ background: "none", border: "none", color: "#dc2626", cursor: "pointer" }}>✕</button>
             </div>
           )}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "16px" }}>
 
             {/* Details */}
-            <div style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "24px" }}>
+            <div style={cardStyle}>
               <h2 style={sectionHeading}>Details</h2>
               <DetailRow label="Type" value={asset.type} />
               <DetailRow label="Description" value={asset.description} />
@@ -401,7 +389,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 
             <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
               {/* Geography */}
-              <div style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "24px" }}>
+              <div style={cardStyle}>
                 <h2 style={sectionHeading}>Location</h2>
                 <DetailRow label="Site" value={site ? `${site.name} (${site.code})` : asset.site_id ? `Site ${asset.site_id}` : null} />
                 <DetailRow label="Location" value={location ? location.name : null} />
@@ -410,15 +398,15 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
               </div>
 
               {/* System */}
-              <div style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "24px" }}>
+              <div style={cardStyle}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
                   <h2 style={{ ...sectionHeading, margin: 0 }}>System</h2>
                   {!editingSystem && (
                     <button
                       onClick={openSystemEdit}
-                      style={{ background: "none", border: "1px solid #333", borderRadius: "6px", color: "#888", fontSize: "12px", padding: "4px 10px", cursor: "pointer" }}
+                      style={{ background: "none", border: "1px solid rgba(215,195,174,0.4)", borderRadius: "6px", color: "#857462", fontSize: "12px", padding: "4px 10px", cursor: "pointer" }}
                       onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#f5a623")}
-                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#333")}
+                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(215,195,174,0.4)")}
                     >
                       Edit
                     </button>
@@ -427,30 +415,19 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 
                 {editingSystem ? (
                   <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                    {/* Discipline */}
-                    <label style={{ fontSize: "12px", color: "#555" }}>
+                    <label style={{ fontSize: "12px", color: "#857462" }}>
                       Discipline
-                      <select
-                        value={editDisciplineId}
-                        onChange={(e) => handleEditDisciplineChange(e.target.value)}
-                        style={selectStyle}
-                      >
+                      <select value={editDisciplineId} onChange={(e) => handleEditDisciplineChange(e.target.value)} style={selectStyle}>
                         <option value="">— Select discipline —</option>
                         {allDisciplines.map((d) => (
                           <option key={d.id} value={String(d.id)}>{d.name} ({d.code})</option>
                         ))}
                       </select>
                     </label>
-
-                    {/* Group */}
                     {editDisciplineId && (
-                      <label style={{ fontSize: "12px", color: "#555" }}>
+                      <label style={{ fontSize: "12px", color: "#857462" }}>
                         System
-                        <select
-                          value={editGroupId}
-                          onChange={(e) => handleEditGroupChange(e.target.value)}
-                          style={selectStyle}
-                        >
+                        <select value={editGroupId} onChange={(e) => handleEditGroupChange(e.target.value)} style={selectStyle}>
                           <option value="">— Select system —</option>
                           {editGroupsList.map((g) => (
                             <option key={g.id} value={String(g.id)}>{g.name} ({g.code})</option>
@@ -458,16 +435,10 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                         </select>
                       </label>
                     )}
-
-                    {/* Subgroup */}
                     {editGroupId && (
-                      <label style={{ fontSize: "12px", color: "#555" }}>
+                      <label style={{ fontSize: "12px", color: "#857462" }}>
                         Subsystem
-                        <select
-                          value={editSubgroupId}
-                          onChange={(e) => setEditSubgroupId(e.target.value)}
-                          style={selectStyle}
-                        >
+                        <select value={editSubgroupId} onChange={(e) => setEditSubgroupId(e.target.value)} style={selectStyle}>
                           <option value="">— Select subsystem —</option>
                           {editSubgroupsList.map((s) => (
                             <option key={s.id} value={String(s.id)}>{s.name} ({s.code})</option>
@@ -475,46 +446,34 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                         </select>
                       </label>
                     )}
-
                     <div style={{ display: "flex", gap: "8px", marginTop: "4px" }}>
-                      <button
-                        onClick={() => setEditingSystem(false)}
-                        style={{ flex: 1, background: "none", border: "1px solid #333", borderRadius: "6px", color: "#888", fontSize: "12px", padding: "7px", cursor: "pointer" }}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleSaveSystem}
-                        disabled={!editSubgroupId}
-                        style={{ flex: 1, background: "#f5a62322", border: "1px solid #f5a62344", borderRadius: "6px", color: "#f5a623", fontSize: "12px", padding: "7px", cursor: "pointer", fontWeight: 600, opacity: editSubgroupId ? 1 : 0.4 }}
-                      >
-                        Save
-                      </button>
+                      <button onClick={() => setEditingSystem(false)} style={{ flex: 1, background: "none", border: "1px solid rgba(215,195,174,0.4)", borderRadius: "6px", color: "#857462", fontSize: "12px", padding: "7px", cursor: "pointer" }}>Cancel</button>
+                      <button onClick={handleSaveSystem} disabled={!editSubgroupId} style={{ flex: 1, background: "linear-gradient(135deg, #835500, #f5a623)", border: "none", borderRadius: "6px", color: "#fff", fontSize: "12px", padding: "7px", cursor: "pointer", fontWeight: 600, opacity: editSubgroupId ? 1 : 0.4 }}>Save</button>
                     </div>
                   </div>
                 ) : discipline && sysGroup && subgroup ? (
                   <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
-                    <span style={{ color: "#f5a623", fontSize: "12px", fontWeight: 600 }}>{discipline.name}</span>
-                    <span style={{ color: "#333", fontSize: "12px" }}>›</span>
-                    <span style={{ color: "#3b82f6", fontSize: "12px", fontWeight: 600 }}>{sysGroup.name}</span>
-                    <span style={{ color: "#333", fontSize: "12px" }}>›</span>
-                    <span style={{ color: "#22c55e", fontSize: "12px", fontWeight: 600 }}>{subgroup.name}</span>
+                    <span style={{ color: "#835500", fontSize: "12px", fontWeight: 600 }}>{discipline.name}</span>
+                    <span style={{ color: "#d7c3ae", fontSize: "12px" }}>›</span>
+                    <span style={{ color: "#1d4ed8", fontSize: "12px", fontWeight: 600 }}>{sysGroup.name}</span>
+                    <span style={{ color: "#d7c3ae", fontSize: "12px" }}>›</span>
+                    <span style={{ color: "#15803d", fontSize: "12px", fontWeight: 600 }}>{subgroup.name}</span>
                   </div>
                 ) : (
-                  <p style={{ color: "#444", fontSize: "13px", margin: 0 }}>No system assigned.</p>
+                  <p style={{ color: "#857462", fontSize: "13px", margin: 0 }}>No system assigned.</p>
                 )}
               </div>
 
               {/* Parent asset */}
-              <div style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "24px" }}>
+              <div style={cardStyle}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
                   <h2 style={{ ...sectionHeading, margin: 0 }}>Parent Asset</h2>
                   {!parent && !showAssignParent && (
                     <button
                       onClick={() => setShowAssignParent(true)}
-                      style={{ background: "none", border: "1px solid #333", borderRadius: "6px", color: "#888", fontSize: "12px", padding: "4px 10px", cursor: "pointer" }}
+                      style={{ background: "none", border: "1px solid rgba(215,195,174,0.4)", borderRadius: "6px", color: "#857462", fontSize: "12px", padding: "4px 10px", cursor: "pointer" }}
                       onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#f5a623")}
-                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#333")}
+                      onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(215,195,174,0.4)")}
                     >
                       + Assign
                     </button>
@@ -524,68 +483,61 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
                 {parent ? (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <Link href={`/dashboard/assets/${parent.id}`}
-                      style={{ color: "#f5a623", fontFamily: "monospace", fontWeight: 700, textDecoration: "none", fontSize: "14px" }}>
+                      style={{ color: "#835500", fontFamily: "monospace", fontWeight: 700, textDecoration: "none", fontSize: "14px" }}>
                       {parent.tag}
-                      {parent.name && <span style={{ color: "#666", fontFamily: "'DM Sans', sans-serif", fontWeight: 400, marginLeft: "8px" }}>{parent.name}</span>}
+                      {parent.name && <span style={{ color: "#857462", fontFamily: "var(--font-inter, Inter, sans-serif)", fontWeight: 400, marginLeft: "8px" }}>{parent.name}</span>}
                     </Link>
                     <button onClick={handleRemoveParent}
-                      style={{ background: "none", border: "none", color: "#555", fontSize: "12px", cursor: "pointer" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
-                      onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}>
+                      style={{ background: "none", border: "none", color: "#d7c3ae", fontSize: "12px", cursor: "pointer" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")}
+                      onMouseLeave={(e) => (e.currentTarget.style.color = "#d7c3ae")}>
                       Remove
                     </button>
                   </div>
                 ) : showAssignParent ? (
-                  <AssetPicker
-                    excludeIds={excludeFromParentPicker}
-                    onSelect={handleAssignParent}
-                    onCancel={() => setShowAssignParent(false)}
-                    placeholder="Search assets to set as parent…"
-                  />
+                  <AssetPicker excludeIds={excludeFromParentPicker} onSelect={handleAssignParent} onCancel={() => setShowAssignParent(false)} placeholder="Search assets to set as parent…" />
                 ) : (
-                  <p style={{ color: "#444", fontSize: "13px", margin: 0 }}>No parent assigned.</p>
+                  <p style={{ color: "#857462", fontSize: "13px", margin: 0 }}>No parent assigned.</p>
                 )}
               </div>
             </div>
           </div>
 
           {/* Related Drawings */}
-          <div style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "24px", marginBottom: "16px" }}>
+          <div style={{ ...cardStyle, marginBottom: "16px" }}>
             <h2 style={sectionHeading}>Related Drawings ({drawings.length})</h2>
             {drawings.length === 0 ? (
-              <p style={{ color: "#444", fontSize: "13px", margin: 0 }}>
-                This asset has not been pinned on any drawings yet.
-              </p>
+              <p style={{ color: "#857462", fontSize: "13px", margin: 0 }}>This asset has not been pinned on any drawings yet.</p>
             ) : (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
+                  <tr style={{ background: "#f3f4f5" }}>
                     {["Document", "Category", "Status", "Page", ""].map((h) => (
-                      <th key={h} style={{ padding: "8px 12px", fontSize: "11px", color: "#444", fontWeight: 600, textAlign: "left", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                      <th key={h} style={{ padding: "8px 12px", fontSize: "10px", color: "#524534", fontWeight: 700, textAlign: "left", textTransform: "uppercase", letterSpacing: "0.1em" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {drawings.map((d) => (
-                    <tr key={d.document_id} style={{ borderBottom: "1px solid #111" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#0d0d0d")}
+                    <tr key={d.document_id} style={{ borderBottom: "1px solid rgba(215,195,174,0.15)" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f4f5")}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                       <td style={{ padding: "10px 12px" }}>
                         <Link href={`/dashboard/documents/${d.document_id}?page=${d.page_number}`}
-                          style={{ color: "#f5a623", fontSize: "13px", fontWeight: 500, textDecoration: "none" }}>
+                          style={{ color: "#835500", fontSize: "13px", fontWeight: 500, textDecoration: "none" }}>
                           {d.document_name}
                         </Link>
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#666" }}>{d.category ?? "—"}</td>
+                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#524534" }}>{d.category ?? "—"}</td>
                       <td style={{ padding: "10px 12px" }}>
-                        <Badge value={d.status} colorMap={DOC_STATUS_COLOR} />
+                        <Badge value={d.status} styleMap={DOC_STATUS_STYLE} />
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#666" }}>Page {d.page_number}</td>
+                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#524534" }}>Page {d.page_number}</td>
                       <td style={{ padding: "10px 12px" }}>
                         <Link href={`/dashboard/documents/${d.document_id}?page=${d.page_number}`}
-                          style={{ color: "#555", fontSize: "12px", textDecoration: "none" }}
-                          onMouseEnter={(e: any) => (e.currentTarget.style.color = "#f5a623")}
-                          onMouseLeave={(e: any) => (e.currentTarget.style.color = "#555")}>
+                          style={{ color: "#857462", fontSize: "12px", textDecoration: "none" }}
+                          onMouseEnter={(e: any) => (e.currentTarget.style.color = "#835500")}
+                          onMouseLeave={(e: any) => (e.currentTarget.style.color = "#857462")}>
                           View drawing →
                         </Link>
                       </td>
@@ -597,15 +549,15 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
           </div>
 
           {/* Children */}
-          <div style={{ background: "#111", border: "1px solid #1a1a1a", borderRadius: "12px", padding: "24px" }}>
+          <div style={cardStyle}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
               <h2 style={{ ...sectionHeading, margin: 0 }}>Child Assets ({children.length})</h2>
               {!showAddChild && (
                 <button
                   onClick={() => setShowAddChild(true)}
-                  style={{ background: "none", border: "1px solid #333", borderRadius: "6px", color: "#888", fontSize: "12px", padding: "4px 10px", cursor: "pointer" }}
+                  style={{ background: "none", border: "1px solid rgba(215,195,174,0.4)", borderRadius: "6px", color: "#857462", fontSize: "12px", padding: "4px 10px", cursor: "pointer" }}
                   onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#f5a623")}
-                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#333")}
+                  onMouseLeave={(e) => (e.currentTarget.style.borderColor = "rgba(215,195,174,0.4)")}
                 >
                   + Add Child
                 </button>
@@ -613,51 +565,45 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
             </div>
 
             {showAddChild && (
-              <div style={{ marginBottom: "16px", padding: "14px", background: "#0d0d0d", borderRadius: "8px", border: "1px solid #1a1a1a" }}>
-                <p style={{ color: "#888", fontSize: "12px", margin: "0 0 6px" }}>Search for an existing asset to make it a child of this one:</p>
-                <AssetPicker
-                  excludeIds={excludeFromChildPicker}
-                  onSelect={handleAddChild}
-                  onCancel={() => setShowAddChild(false)}
-                  placeholder="Search assets to add as child…"
-                />
+              <div style={{ marginBottom: "16px", padding: "14px", background: "#f8f9fa", borderRadius: "8px", border: "1px solid rgba(215,195,174,0.2)" }}>
+                <p style={{ color: "#857462", fontSize: "12px", margin: "0 0 6px" }}>Search for an existing asset to make it a child of this one:</p>
+                <AssetPicker excludeIds={excludeFromChildPicker} onSelect={handleAddChild} onCancel={() => setShowAddChild(false)} placeholder="Search assets to add as child…" />
               </div>
             )}
 
             {children.length === 0 && !showAddChild ? (
-              <p style={{ color: "#444", fontSize: "13px", margin: 0 }}>No child assets assigned.</p>
+              <p style={{ color: "#857462", fontSize: "13px", margin: 0 }}>No child assets assigned.</p>
             ) : children.length > 0 && (
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
-                  <tr style={{ borderBottom: "1px solid #1a1a1a" }}>
+                  <tr style={{ background: "#f3f4f5" }}>
                     {["Tag", "Name", "Type", "Children", "Status", ""].map((h) => (
-                      <th key={h} style={{ padding: "8px 12px", fontSize: "11px", color: "#444", fontWeight: 600, textAlign: "left", textTransform: "uppercase", letterSpacing: "0.05em" }}>{h}</th>
+                      <th key={h} style={{ padding: "8px 12px", fontSize: "10px", color: "#524534", fontWeight: 700, textAlign: "left", textTransform: "uppercase", letterSpacing: "0.1em" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {children.map((child) => (
-                    <tr key={child.id} style={{ borderBottom: "1px solid #111" }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "#0d0d0d")}
+                    <tr key={child.id} style={{ borderBottom: "1px solid rgba(215,195,174,0.15)" }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = "#f3f4f5")}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                       <td style={{ padding: "10px 12px" }}>
-                        <Link href={`/dashboard/assets/${child.id}`}
-                          style={{ color: "#f5a623", fontSize: "13px", fontWeight: 700, fontFamily: "monospace", textDecoration: "none" }}>
+                        <Link href={`/dashboard/assets/${child.id}`} style={{ color: "#835500", fontSize: "13px", fontWeight: 700, fontFamily: "monospace", textDecoration: "none" }}>
                           {child.tag}
                         </Link>
                       </td>
-                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#ccc" }}>{child.name ?? "—"}</td>
-                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#666" }}>{child.type ?? "—"}</td>
-                      <td style={{ padding: "10px 12px", fontSize: "13px", color: child.children_count > 0 ? "#22c55e" : "#333" }}>
+                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#191c1d" }}>{child.name ?? "—"}</td>
+                      <td style={{ padding: "10px 12px", fontSize: "13px", color: "#524534" }}>{child.type ?? "—"}</td>
+                      <td style={{ padding: "10px 12px", fontSize: "13px", color: child.children_count > 0 ? "#15803d" : "#d7c3ae" }}>
                         {child.children_count > 0 ? child.children_count : "—"}
                       </td>
-                      <td style={{ padding: "10px 12px" }}><Badge value={child.status} colorMap={STATUS_COLOR} /></td>
+                      <td style={{ padding: "10px 12px" }}><Badge value={child.status} styleMap={STATUS_STYLE} /></td>
                       <td style={{ padding: "10px 12px" }}>
                         <button
                           onClick={() => handleRemoveChild(child.id)}
-                          style={{ background: "none", border: "none", color: "#555", fontSize: "12px", cursor: "pointer" }}
-                          onMouseEnter={(e) => (e.currentTarget.style.color = "#ef4444")}
-                          onMouseLeave={(e) => (e.currentTarget.style.color = "#555")}
+                          style={{ background: "none", border: "none", color: "#d7c3ae", fontSize: "12px", cursor: "pointer" }}
+                          onMouseEnter={(e) => (e.currentTarget.style.color = "#dc2626")}
+                          onMouseLeave={(e) => (e.currentTarget.style.color = "#d7c3ae")}
                         >
                           Remove
                         </button>
@@ -668,7 +614,6 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
               </table>
             )}
           </div>
-
         </div>
       </main>
     </div>
@@ -676,12 +621,12 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 }
 
 const sectionHeading: React.CSSProperties = {
-  color: "#fff", fontSize: "13px", fontWeight: 700,
-  margin: "0 0 14px", textTransform: "uppercase", letterSpacing: "0.06em",
+  color: "#191c1d", fontSize: "12px", fontWeight: 700,
+  margin: "0 0 14px", textTransform: "uppercase", letterSpacing: "0.08em",
 };
 
 const selectStyle: React.CSSProperties = {
   display: "block", width: "100%", marginTop: "4px",
-  background: "#0a0a0a", border: "1px solid #333", borderRadius: "6px",
-  padding: "7px 10px", color: "#ccc", fontSize: "13px", outline: "none",
+  background: "#f3f4f5", border: "none", borderRadius: "6px",
+  padding: "7px 10px", color: "#191c1d", fontSize: "13px", outline: "none",
 };
