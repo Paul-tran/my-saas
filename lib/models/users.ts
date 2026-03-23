@@ -12,6 +12,8 @@ export interface AppUser {
   is_verified: boolean;
   is_admin: boolean;
   created_at: string;
+  role_id: number | null;
+  role_name: string | null;
 }
 
 export interface AdminUserUpdate {
@@ -20,6 +22,7 @@ export interface AdminUserUpdate {
   email?: string;
   is_active?: boolean;
   is_admin?: boolean;
+  project_role_id?: number | null;
 }
 
 export async function fetchAllUsers(): Promise<AppUser[]> {
@@ -49,6 +52,13 @@ export async function fetchRoles() {
 
 export async function fetchProjects() {
   return apiFetch<{ id: number; name: string }[]>(`${BASE}/projects`);
+}
+
+export async function inviteUser(data: { email: string; first_name?: string; last_name?: string }): Promise<AppUser> {
+  return apiFetch<AppUser>(`${BASE}/admin/users/invite`, undefined, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 }
 
 export async function addProjectMember(projectId: number, userId: number, roleId: number) {

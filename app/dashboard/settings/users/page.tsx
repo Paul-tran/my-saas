@@ -12,6 +12,7 @@ import {
   fetchRoles,
   fetchProjects,
   addProjectMember,
+  inviteUser,
 } from "@/lib/models/users";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
@@ -71,9 +72,15 @@ function EditModal({ user, onClose, onSaved }: EditModalProps) {
     email: user.email,
     is_active: user.is_active,
     is_admin: user.is_admin,
+    project_role_id: user.role_id ?? undefined,
   });
+  const [roles, setRoles] = useState<{ id: number; name: string }[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchRoles().then(setRoles).catch(() => {});
+  }, []);
 
   async function handleSave() {
     setSaving(true);
@@ -122,6 +129,26 @@ function EditModal({ user, onClose, onSaved }: EditModalProps) {
             </div>
           ))}
 
+          {/* Role selector */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: "#524534" }}>
+              Project Role
+            </label>
+            <select
+              value={form.project_role_id ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, project_role_id: e.target.value ? Number(e.target.value) : undefined }))}
+              className="w-full bg-transparent text-sm py-2 outline-none"
+              style={{ borderBottom: "1.5px solid #d7c3ae", color: "#191c1d" }}
+              onFocus={(e) => (e.currentTarget.style.borderBottomColor = "#835500")}
+              onBlur={(e) => (e.currentTarget.style.borderBottomColor = "#d7c3ae")}
+            >
+              <option value="">— No role assigned —</option>
+              {roles.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+          </div>
+
           <div className="flex gap-6 pt-1">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
@@ -139,7 +166,7 @@ function EditModal({ user, onClose, onSaved }: EditModalProps) {
                 onChange={(e) => setForm((f) => ({ ...f, is_admin: e.target.checked }))}
                 className="w-4 h-4 accent-[#835500]"
               />
-              <span className="text-sm" style={{ color: "#191c1d" }}>Admin</span>
+              <span className="text-sm" style={{ color: "#191c1d" }}>System Admin</span>
             </label>
           </div>
         </div>
@@ -380,6 +407,175 @@ function DeleteModal({ user, onClose, onDeleted }: { user: AppUser; onClose: () 
   );
 }
 
+// ─── Invite modal ────────────────────────────────────────────────────────────
+
+function InviteModal({ onClose, onInvited }: { onClose: () => void; onInvited: (u: AppUser) => void }) {
+  const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSend(e: React.FormEvent) {
+    e.preventDefault();
+    setSending(true);
+    setError("");
+    try {
+      const user = await inviteUser({ email, first_name: firstName, last_name: lastName });
+      onInvited(user);
+      setSent(true);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setSending(false);
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%",
+    background: "transparent",
+    border: "none",
+    borderBottom: "1.5px solid #d7c3ae",
+    color: "#191c1d",
+    fontSize: "14px",
+    padding: "8px 0",
+    outline: "none",
+    fontFamily: "inherit",
+    boxSizing: "border-box",
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm px-4">
+      <div className="bg-white rounded-2xl w-full max-w-md p-8" style={{ boxShadow: "0 20px 40px rgba(25,28,29,0.1)" }}>
+        {sent ? (
+          <div className="text-center py-4">
+            <div
+              className="inline-flex items-center justify-center w-14 h-14 rounded-full mb-4"
+              style={{ background: "rgba(131,85,0,0.08)" }}
+            >
+              <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#835500" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M22 2L11 13" /><path d="M22 2L15 22l-4-9-9-4 20-7z" />
+              </svg>
+            </div>
+            <h3 className="font-bold mb-2" style={{ fontFamily: "var(--font-manrope)", fontSize: "1.125rem", color: "#191c1d" }}>
+              Invitation sent!
+            </h3>
+            <p className="text-sm mb-6" style={{ color: "#857462" }}>
+              An email has been sent to <strong style={{ color: "#191c1d" }}>{email}</strong> with a link to set their password.
+            </p>
+            <button
+              onClick={onClose}
+              className="w-full py-2.5 rounded-lg text-sm font-semibold text-white"
+              style={{ background: "linear-gradient(135deg,#835500,#f5a623)" }}
+            >
+              Done
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: "rgba(131,85,0,0.08)" }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#835500" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="8.5" cy="7" r="4" />
+                  <line x1="20" y1="8" x2="20" y2="14" />
+                  <line x1="17" y1="11" x2="23" y2="11" />
+                </svg>
+              </div>
+              <div>
+                <h2 className="font-bold" style={{ fontFamily: "var(--font-manrope)", fontSize: "1.125rem", color: "#191c1d", margin: 0 }}>
+                  Invite User
+                </h2>
+                <p className="text-xs mt-0.5" style={{ color: "#857462" }}>
+                  They'll receive an email to set their password.
+                </p>
+              </div>
+            </div>
+
+            <form onSubmit={handleSend} className="space-y-5">
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: "First name", value: firstName, set: setFirstName, required: false },
+                  { label: "Last name", value: lastName, set: setLastName, required: false },
+                ].map(({ label, value, set, required }) => (
+                  <div key={label}>
+                    <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: "#524534" }}>
+                      {label}
+                    </label>
+                    <input
+                      value={value}
+                      onChange={(e) => set(e.target.value)}
+                      required={required}
+                      style={inputStyle}
+                      onFocus={(e) => (e.currentTarget.style.borderBottomColor = "#835500")}
+                      onBlur={(e) => (e.currentTarget.style.borderBottomColor = "#d7c3ae")}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: "#524534" }}>
+                  Email address <span style={{ color: "#835500" }}>*</span>
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  placeholder="colleague@company.com"
+                  style={{ ...inputStyle, color: email ? "#191c1d" : "#c4b5a0" }}
+                  onFocus={(e) => (e.currentTarget.style.borderBottomColor = "#835500")}
+                  onBlur={(e) => (e.currentTarget.style.borderBottomColor = "#d7c3ae")}
+                />
+              </div>
+
+              {error && (
+                <p className="text-xs px-3 py-2.5 rounded-lg" style={{ background: "#ffdad6", color: "#93000a" }}>
+                  {error}
+                </p>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium"
+                  style={{ border: "1.5px solid #d7c3ae", color: "#524534" }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={sending}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-semibold text-white disabled:opacity-50 flex items-center justify-center gap-2"
+                  style={{ background: "linear-gradient(135deg,#835500,#f5a623)" }}
+                >
+                  {sending ? (
+                    <>
+                      <div className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                      Sending…
+                    </>
+                  ) : (
+                    <>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M22 2L11 13" /><path d="M22 2L15 22l-4-9-9-4 20-7z" />
+                      </svg>
+                      Send Invite
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ─── Main page ───────────────────────────────────────────────────────────────
 
 export default function UsersAdminPage() {
@@ -388,6 +584,7 @@ export default function UsersAdminPage() {
   const [users, setUsers] = useState<AppUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [showInvite, setShowInvite] = useState(false);
   const [editTarget, setEditTarget] = useState<AppUser | null>(null);
   const [assignTarget, setAssignTarget] = useState<AppUser | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<AppUser | null>(null);
@@ -423,7 +620,8 @@ export default function UsersAdminPage() {
   return (
     <div className="px-6 py-8 max-w-5xl mx-auto">
       {/* Header */}
-      <div className="mb-8">
+      <div className="mb-8 flex items-end justify-between gap-4">
+        <div>
         <h1
           className="font-bold mb-1"
           style={{ fontFamily: "var(--font-manrope)", fontSize: "1.75rem", color: "#191c1d" }}
@@ -433,7 +631,22 @@ export default function UsersAdminPage() {
         <p className="text-sm" style={{ color: "#857462" }}>
           {users.length} user{users.length !== 1 ? "s" : ""} · Admins can edit profiles and assign project roles
         </p>
+        </div>
+        <button
+          onClick={() => setShowInvite(true)}
+          className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-semibold text-white"
+          style={{ background: "linear-gradient(135deg,#835500,#f5a623)" }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="8.5" cy="7" r="4" />
+            <line x1="20" y1="8" x2="20" y2="14" />
+            <line x1="17" y1="11" x2="23" y2="11" />
+          </svg>
+          Invite User
+        </button>
       </div>
+
 
       {/* Search */}
       <div className="mb-6 relative">
@@ -519,9 +732,9 @@ export default function UsersAdminPage() {
                 {/* Status badge */}
                 <Badge active={u.is_active} />
 
-                {/* Joined */}
-                <span className="text-xs whitespace-nowrap" style={{ color: "#857462" }}>
-                  {new Date(u.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                {/* Role */}
+                <span className="text-xs whitespace-nowrap font-medium px-2 py-0.5 rounded-full" style={u.role_name ? { background: "rgba(131,85,0,0.08)", color: "#835500" } : { color: "#857462" }}>
+                  {u.role_name ?? "No role"}
                 </span>
 
                 {/* Actions */}
@@ -584,6 +797,12 @@ export default function UsersAdminPage() {
       </div>
 
       {/* Modals */}
+      {showInvite && (
+        <InviteModal
+          onClose={() => setShowInvite(false)}
+          onInvited={(newUser) => setUsers((prev) => [...prev, newUser])}
+        />
+      )}
       {editTarget && (
         <EditModal
           user={editTarget}

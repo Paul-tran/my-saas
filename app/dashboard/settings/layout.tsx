@@ -12,6 +12,7 @@ const TABS = [
 
 const ADMIN_TABS = [
   { href: "/dashboard/settings/users", label: "Users", icon: "group" },
+  { href: "/dashboard/settings/roles", label: "Roles & Permissions", icon: "admin_panel_settings" },
 ];
 
 export default function SettingsLayout({ children }: { children: React.ReactNode }) {

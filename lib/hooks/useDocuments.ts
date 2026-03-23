@@ -11,32 +11,40 @@ import {
   updateDocument,
   getDocumentFileUrl,
   deleteDocument,
-  fetchMyRole,
+  fetchMyPermissions,
+  MyPermissions,
 } from "../models/documents";
 
 const PROJECT_ID = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
 
-const RESTRICTED_ROLES = new Set(["viewer", "guest"]);
-
 export function useDocuments() {
-  
+
   const [documents, setDocuments] = useState<Document[]>([]);
   const [uploading, setUploading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [myRole, setMyRole] = useState<string | null>(null);
+  const [myPermissions, setMyPermissions] = useState<MyPermissions | null>(null);
 
-  // Default to editable if no member record exists (role system not yet configured)
-  const canEdit = myRole ? !RESTRICTED_ROLES.has(myRole) : true;
+  const canEdit = myPermissions
+    ? myPermissions.is_admin || !!myPermissions.permissions?.documents?.edit
+    : false;
+
+  const canDelete = myPermissions
+    ? myPermissions.is_admin || !!myPermissions.permissions?.documents?.delete
+    : false;
+
+  const canUpload = myPermissions
+    ? myPermissions.is_admin || !!myPermissions.permissions?.documents?.upload
+    : false;
 
   const load = useCallback(async () => {
     try {
-      const [docs, role] = await Promise.all([
+      const [docs, perms] = await Promise.all([
         fetchDocuments(PROJECT_ID, ""),
-        fetchMyRole(PROJECT_ID, ""),
+        fetchMyPermissions(PROJECT_ID),
       ]);
       setDocuments(docs);
-      setMyRole(role);
+      setMyPermissions(perms);
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -90,5 +98,5 @@ export function useDocuments() {
     }
   }
 
-  return { documents, loading, uploading, error, myRole, canEdit, handleUpload, handleUpdate, openDocument, handleDelete };
+  return { documents, loading, uploading, error, myPermissions, canEdit, canDelete, canUpload, handleUpload, handleUpdate, openDocument, handleDelete };
 }

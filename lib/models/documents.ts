@@ -136,3 +136,16 @@ export async function fetchMyRole(projectId: number, token?: string): Promise<st
     return null;
   }
 }
+
+export interface MyPermissions {
+  is_admin: boolean;
+  permissions: Record<string, Record<string, boolean>>;
+}
+
+export async function fetchMyPermissions(projectId: number): Promise<MyPermissions> {
+  try {
+    return await apiFetch<MyPermissions>(`/api/v1/projects/${projectId}/my-permissions`);
+  } catch {
+    return { is_admin: false, permissions: {} };
+  }
+}
