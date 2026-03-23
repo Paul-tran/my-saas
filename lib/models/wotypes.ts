@@ -34,24 +34,24 @@ export const CATEGORY_COLOR: Record<WOType["category"], string> = {
   operations: "#f59e0b",
 };
 
-export async function fetchWOTypes(projectId: number, token: string): Promise<WOType[]> {
+export async function fetchWOTypes(projectId: number, token?: string): Promise<WOType[]> {
   return apiFetch(`/api/v1/projects/${projectId}/wo-types`, token);
 }
 
-export async function createWOType(projectId: number, data: WOTypeCreate, token: string): Promise<WOType> {
+export async function createWOType(projectId: number, data: WOTypeCreate, token?: string): Promise<WOType> {
   return apiFetch(`/api/v1/projects/${projectId}/wo-types`, token, {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
-export async function updateWOType(typeId: number, data: WOTypeUpdate, token: string): Promise<WOType> {
+export async function updateWOType(typeId: number, data: WOTypeUpdate, token?: string): Promise<WOType> {
   return apiFetch(`/api/v1/wo-types/${typeId}`, token, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
 }
 
-export async function deleteWOType(typeId: number, token: string): Promise<void> {
+export async function deleteWOType(typeId: number, token?: string): Promise<void> {
   await apiFetch(`/api/v1/wo-types/${typeId}`, token, { method: "DELETE" });
 }

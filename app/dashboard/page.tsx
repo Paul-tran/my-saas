@@ -3,9 +3,12 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import Sidebar from "../components/Sidebar";
+import { useEffect, useState } from "react";
 import { useDashboard } from "../../lib/hooks/useDashboard";
-import { useUser } from "@clerk/nextjs";
+import { useAuth } from "@/lib/auth/AuthContext";
+import { apiFetch } from "@/lib/api";
+
+const PROJECT_ID = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
 
 const kpiIcons: Record<string, string> = {
   "Total Documents": "folder_open",
@@ -15,7 +18,16 @@ const kpiIcons: Record<string, string> = {
 
 export default function Dashboard() {
   const { docCount, assetCount, inspectionCount, loading } = useDashboard();
-  const { user } = useUser();
+  const { user } = useAuth();
+  const [profileType, setProfileType] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user) return;
+    if (user.is_admin) { setProfileType("Admin"); return; }
+    apiFetch<{ role: string | null }>(`/api/v1/projects/${PROJECT_ID}/members/me`)
+      .then((d) => setProfileType(d.role ?? "Member"))
+      .catch(() => setProfileType("Member"));
+  }, [user]);
 
   const stats = [
     { label: "Total Documents", value: docCount, icon: "folder_open", trend: null },
@@ -37,12 +49,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
-
-      <Sidebar active="dashboard" />
-
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <div style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Top Header */}
         <header style={{
           height: "64px",
@@ -70,12 +77,12 @@ export default function Dashboard() {
             <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
               <div style={{ textAlign: "right" }}>
                 <p style={{ margin: 0, fontSize: "12px", fontWeight: 700, color: "#191c1d", fontFamily: "var(--font-manrope, Manrope, sans-serif)" }}>
-                  {user?.firstName || "User"}
+                  {user?.first_name || "User"}
                 </p>
-                <p style={{ margin: 0, fontSize: "10px", color: "#524534" }}>Project Manager</p>
+                <p style={{ margin: 0, fontSize: "10px", color: "#524534" }}>{profileType ?? "—"}</p>
               </div>
               <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(135deg, #835500, #f5a623)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: 700, fontSize: "12px", fontFamily: "var(--font-manrope, Manrope, sans-serif)" }}>
-                {user?.firstName?.[0] || "U"}
+                {user?.first_name?.[0] || "U"}
               </div>
             </div>
           </div>
@@ -225,7 +232,6 @@ export default function Dashboard() {
             </aside>
           </div>
         </main>
-      </div>
     </div>
   );
 }

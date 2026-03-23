@@ -4,11 +4,12 @@ export const dynamic = "force-dynamic";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
-import Sidebar from "../../components/Sidebar";
 import ErrorBanner from "../../components/ErrorBanner";
 import { useAssets } from "../../../lib/hooks/useAssets";
 import { Site, fetchSites } from "../../../lib/models/geography";
+import { SystemDiscipline, SystemGroup, SystemSubgroup, fetchDisciplines, fetchGroups, fetchSubgroups, fetchSystemConfig, SystemLevelConfig } from "../../../lib/models/systems";
+
+const PROJECT_ID = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
 
 const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
   active:      { bg: "#dcfce7", color: "#15803d" },
@@ -31,21 +32,47 @@ const inputStyle: React.CSSProperties = {
 
 export default function Assets() {
   const { assets, filters, loading, error, hasMore, updateFilters, nextPage, prevPage, handleDelete } = useAssets();
-  const { getToken } = useAuth();
   const [sites, setSites] = useState<Site[]>([]);
+  const [sysConfig, setSysConfig] = useState<SystemLevelConfig | null>(null);
+  const [disciplines, setDisciplines] = useState<SystemDiscipline[]>([]);
+  const [groups, setGroups] = useState<SystemGroup[]>([]);
+  const [subgroups, setSubgroups] = useState<SystemSubgroup[]>([]);
 
   useEffect(() => {
-    getToken().then((t) => { if (t) fetchSites(t).then(setSites).catch(() => {}); });
-  }, [getToken]);
+    fetchSites("").then(setSites).catch(() => {});
+    fetchDisciplines(PROJECT_ID, "").then(setDisciplines).catch(() => {});
+    fetchSystemConfig(PROJECT_ID, "").then(setSysConfig).catch(() => {});
+  }, []);
 
-  const hasFilters = filters.search || filters.site_id || filters.status || filters.commissioning_status || filters.parent_id !== undefined;
+  async function onDisciplineChange(disciplineId: number | undefined) {
+    updateFilters({ discipline_id: disciplineId, group_id: undefined, subgroup_id: undefined });
+    setGroups([]);
+    setSubgroups([]);
+    if (!disciplineId) return;
+    fetchGroups(disciplineId, "").then(setGroups).catch(() => {});
+  }
+
+  async function onGroupChange(groupId: number | undefined) {
+    updateFilters({ group_id: groupId, subgroup_id: undefined });
+    setSubgroups([]);
+    if (!groupId) return;
+    fetchSubgroups(groupId, "").then(setSubgroups).catch(() => {});
+  }
+
+  function clearAllFilters() {
+    updateFilters({ search: undefined, site_id: undefined, status: undefined, commissioning_status: undefined, parent_id: undefined, discipline_id: undefined, group_id: undefined, subgroup_id: undefined });
+    setGroups([]);
+    setSubgroups([]);
+  }
+
+  const hasFilters = filters.search || filters.site_id || filters.status || filters.commissioning_status || filters.parent_id !== undefined || filters.discipline_id || filters.group_id || filters.subgroup_id;
+
+  const l1 = sysConfig?.level1_name || "Discipline";
+  const l2 = sysConfig?.level2_name || "Group";
+  const l3 = sysConfig?.level3_name || "Subgroup";
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
-      <Sidebar active="assets" />
-
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <main style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "32px 40px 24px", background: "rgba(255,255,255,0.7)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(215,195,174,0.2)", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", marginBottom: "20px" }}>
@@ -91,6 +118,40 @@ export default function Assets() {
               <option value="failed">Failed</option>
             </select>
 
+            {/* System filters */}
+            {disciplines.length > 0 && (
+              <select
+                value={filters.discipline_id ?? ""}
+                onChange={(e) => onDisciplineChange(e.target.value ? Number(e.target.value) : undefined)}
+                style={inputStyle}
+              >
+                <option value="">All {l1}s</option>
+                {disciplines.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            )}
+
+            {groups.length > 0 && (
+              <select
+                value={filters.group_id ?? ""}
+                onChange={(e) => onGroupChange(e.target.value ? Number(e.target.value) : undefined)}
+                style={inputStyle}
+              >
+                <option value="">All {l2}s</option>
+                {groups.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
+              </select>
+            )}
+
+            {subgroups.length > 0 && (
+              <select
+                value={filters.subgroup_id ?? ""}
+                onChange={(e) => updateFilters({ subgroup_id: e.target.value ? Number(e.target.value) : undefined })}
+                style={inputStyle}
+              >
+                <option value="">All {l3}s</option>
+                {subgroups.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            )}
+
             <button
               onClick={() => updateFilters({ parent_id: filters.parent_id === 0 ? undefined : 0 })}
               style={{
@@ -104,7 +165,7 @@ export default function Assets() {
 
             {hasFilters && (
               <button
-                onClick={() => updateFilters({ search: undefined, site_id: undefined, status: undefined, commissioning_status: undefined, parent_id: undefined })}
+                onClick={clearAllFilters}
                 style={{ background: "none", border: "none", color: "#857462", fontSize: "13px", cursor: "pointer", textDecoration: "underline" }}
               >
                 Clear filters
@@ -162,8 +223,9 @@ export default function Assets() {
                       <td style={{ padding: "14px 20px" }}>
                         {asset.parent_id ? (
                           <Link href={`/dashboard/assets/${asset.parent_id}`}
-                            style={{ color: "#00658a", textDecoration: "none", fontSize: "12px", display: "flex", alignItems: "center", gap: "4px" }}>
-                            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>arrow_upward</span> parent
+                            style={{ color: "#00658a", textDecoration: "none", fontSize: "12px", fontFamily: "monospace", fontWeight: 600, display: "flex", alignItems: "center", gap: "4px" }}>
+                            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>arrow_upward</span>
+                            {asset.parent_tag ?? asset.parent_id}
                           </Link>
                         ) : <span style={{ color: "#d7c3ae" }}>—</span>}
                       </td>
@@ -223,7 +285,6 @@ export default function Assets() {
             </div>
           )}
         </div>
-      </main>
-    </div>
+    </main>
   );
 }

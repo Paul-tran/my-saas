@@ -1,6 +1,5 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { useState, useEffect, useCallback } from "react";
 import { Document } from "../models/documents";
 import {
@@ -17,7 +16,6 @@ import { fetchRevisions, getDocumentFileUrl } from "../models/documents";
 const DEFAULT_PROJECT_ID = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
 
 export function useDrawingViewer(documentId: number, initialPage = 1) {
-  const { getToken } = useAuth();
 
   const [document, setDocument] = useState<Document | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
@@ -32,20 +30,18 @@ export function useDrawingViewer(documentId: number, initialPage = 1) {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const token = await getToken();
-    if (!token) return;
     try {
       const [doc, revisions, pinsData] = await Promise.all([
-        fetchDocument(documentId, token),
-        fetchRevisions(documentId, token),
-        fetchPins(documentId, token),
+        fetchDocument(documentId, ""),
+        fetchRevisions(documentId, ""),
+        fetchPins(documentId, ""),
       ]);
       setDocument(doc);
       setPins(pinsData);
       if (revisions.length) {
         const latest = revisions[revisions.length - 1];
         setLatestRevisionId(latest.id);
-        const url = await getDocumentFileUrl(latest.file_key, token);
+        const url = await getDocumentFileUrl(latest.file_key, "");
         setPdfUrl(url);
       }
     } catch (e: any) {
@@ -53,7 +49,7 @@ export function useDrawingViewer(documentId: number, initialPage = 1) {
     } finally {
       setLoading(false);
     }
-  }, [documentId, getToken]);
+  }, [documentId, ]);
 
   useEffect(() => {
     load();
@@ -62,11 +58,9 @@ export function useDrawingViewer(documentId: number, initialPage = 1) {
   const pinsForPage = pins.filter((p) => p.page_number === currentPage && p.status !== "dismissed");
 
   async function handleAnalyze() {
-    const token = await getToken();
-    if (!token) return;
     setAnalyzing(true);
     try {
-      const newPins = await analyzeDrawing(documentId, currentPage, token);
+      const newPins = await analyzeDrawing(documentId, currentPage, "");
       // Replace existing pending pins for this page with fresh results
       setPins((prev) => [
         ...prev.filter((p) => !(p.page_number === currentPage && p.status === "pending")),
@@ -88,10 +82,8 @@ export function useDrawingViewer(documentId: number, initialPage = 1) {
     parentId?: number,
     subgroupId?: number,
   ) {
-    const token = await getToken();
-    if (!token) return;
     try {
-      const updated = await confirmPin(pinId, DEFAULT_PROJECT_ID, siteId, token, locationId, unitId, partitionId, parentId, subgroupId);
+      const updated = await confirmPin(pinId, DEFAULT_PROJECT_ID, siteId, "", locationId, unitId, partitionId, parentId, subgroupId);
       setPins((prev) => prev.map((p) => (p.id === pinId ? updated : p)));
       setSelectedPinId(null);
     } catch (e: any) {
@@ -100,10 +92,8 @@ export function useDrawingViewer(documentId: number, initialPage = 1) {
   }
 
   async function handleDismiss(pinId: number) {
-    const token = await getToken();
-    if (!token) return;
     try {
-      const updated = await dismissPin(pinId, token);
+      const updated = await dismissPin(pinId, "");
       setPins((prev) => prev.map((p) => (p.id === pinId ? updated : p)));
       setSelectedPinId(null);
     } catch (e: any) {
@@ -116,8 +106,7 @@ export function useDrawingViewer(documentId: number, initialPage = 1) {
     assetType?: string,
     description?: string
   ) {
-    const token = await getToken();
-    if (!token || !pendingPlacement || !latestRevisionId) return;
+    if (!pendingPlacement || !latestRevisionId) return;
     try {
       const pin = await createPin(
         documentId,
@@ -130,7 +119,7 @@ export function useDrawingViewer(documentId: number, initialPage = 1) {
           y_percent: pendingPlacement.y_percent,
           page_number: currentPage,
         },
-        token
+        ""
       );
       setPins((prev) => [...prev, pin]);
       setSelectedPinId(pin.id);

@@ -38,29 +38,29 @@ export type Partition = {
 
 // --- Sites ---
 
-export async function fetchSites(token: string): Promise<Site[]> {
+export async function fetchSites(token?: string): Promise<Site[]> {
   return apiFetch("/api/v1/geography/sites", token);
 }
 
-export async function fetchSite(id: number, token: string): Promise<Site> {
+export async function fetchSite(id: number, token?: string): Promise<Site> {
   return apiFetch(`/api/v1/geography/sites/${id}`, token);
 }
 
-export async function fetchLocation(id: number, token: string): Promise<Location> {
+export async function fetchLocation(id: number, token?: string): Promise<Location> {
   return apiFetch(`/api/v1/geography/locations/${id}`, token);
 }
 
-export async function fetchUnit(id: number, token: string): Promise<GeoUnit> {
+export async function fetchUnit(id: number, token?: string): Promise<GeoUnit> {
   return apiFetch(`/api/v1/geography/units/${id}`, token);
 }
 
-export async function fetchPartition(id: number, token: string): Promise<Partition> {
+export async function fetchPartition(id: number, token?: string): Promise<Partition> {
   return apiFetch(`/api/v1/geography/partitions/${id}`, token);
 }
 
 export async function createSite(
   data: { name: string; code: string; address?: string },
-  token: string
+  token?: string
 ): Promise<Site> {
   return apiFetch("/api/v1/geography/sites", token, {
     method: "POST",
@@ -71,7 +71,7 @@ export async function createSite(
 export async function updateSite(
   id: number,
   data: { name?: string; code?: string; address?: string },
-  token: string
+  token?: string
 ): Promise<Site> {
   return apiFetch(`/api/v1/geography/sites/${id}`, token, {
     method: "PATCH",
@@ -79,19 +79,19 @@ export async function updateSite(
   });
 }
 
-export async function deleteSite(id: number, token: string): Promise<void> {
+export async function deleteSite(id: number, token?: string): Promise<void> {
   return apiFetch(`/api/v1/geography/sites/${id}`, token, { method: "DELETE" });
 }
 
 // --- Locations ---
 
-export async function fetchLocations(siteId: number, token: string): Promise<Location[]> {
+export async function fetchLocations(siteId: number, token?: string): Promise<Location[]> {
   return apiFetch(`/api/v1/geography/sites/${siteId}/locations`, token);
 }
 
 export async function createLocation(
   data: { site_id: number; name: string; code?: string },
-  token: string
+  token?: string
 ): Promise<Location> {
   return apiFetch("/api/v1/geography/locations", token, {
     method: "POST",
@@ -99,19 +99,19 @@ export async function createLocation(
   });
 }
 
-export async function deleteLocation(id: number, token: string): Promise<void> {
+export async function deleteLocation(id: number, token?: string): Promise<void> {
   return apiFetch(`/api/v1/geography/locations/${id}`, token, { method: "DELETE" });
 }
 
 // --- Units ---
 
-export async function fetchUnits(locationId: number, token: string): Promise<GeoUnit[]> {
+export async function fetchUnits(locationId: number, token?: string): Promise<GeoUnit[]> {
   return apiFetch(`/api/v1/geography/locations/${locationId}/units`, token);
 }
 
 export async function createUnit(
   data: { location_id: number; name: string; code?: string },
-  token: string
+  token?: string
 ): Promise<GeoUnit> {
   return apiFetch("/api/v1/geography/units", token, {
     method: "POST",
@@ -119,19 +119,19 @@ export async function createUnit(
   });
 }
 
-export async function deleteUnit(id: number, token: string): Promise<void> {
+export async function deleteUnit(id: number, token?: string): Promise<void> {
   return apiFetch(`/api/v1/geography/units/${id}`, token, { method: "DELETE" });
 }
 
 // --- Partitions ---
 
-export async function fetchPartitions(unitId: number, token: string): Promise<Partition[]> {
+export async function fetchPartitions(unitId: number, token?: string): Promise<Partition[]> {
   return apiFetch(`/api/v1/geography/units/${unitId}/partitions`, token);
 }
 
 export async function createPartition(
   data: { unit_id: number; name: string; code?: string },
-  token: string
+  token?: string
 ): Promise<Partition> {
   return apiFetch("/api/v1/geography/partitions", token, {
     method: "POST",
@@ -139,6 +139,6 @@ export async function createPartition(
   });
 }
 
-export async function deletePartition(id: number, token: string): Promise<void> {
+export async function deletePartition(id: number, token?: string): Promise<void> {
   return apiFetch(`/api/v1/geography/partitions/${id}`, token, { method: "DELETE" });
 }

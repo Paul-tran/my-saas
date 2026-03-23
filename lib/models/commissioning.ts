@@ -29,7 +29,7 @@ export const STATUS_LABELS: Record<string, string> = {
 
 export async function fetchCommissioning(
   projectId: number,
-  token: string
+  token?: string
 ): Promise<CommissioningRecord[]> {
   return apiFetch(`/api/v1/projects/${projectId}/commissioning`, token);
 }
@@ -37,7 +37,7 @@ export async function fetchCommissioning(
 export async function createCommissioning(
   projectId: number,
   data: CommissioningCreate,
-  token: string
+  token?: string
 ): Promise<CommissioningRecord> {
   return apiFetch(`/api/v1/projects/${projectId}/commissioning`, token, {
     method: "POST",

@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
-import Sidebar from "../../../components/Sidebar";
 import ErrorBanner from "../../../components/ErrorBanner";
 import { useWOTypes } from "../../../../lib/hooks/useWOTypes";
 import { createWorkOrder, WorkOrderCreate } from "../../../../lib/models/workorders";
@@ -16,7 +14,6 @@ type GeoOption = { id: number; name: string };
 
 export default function NewWorkOrderPage() {
   const router = useRouter();
-  const { getToken } = useAuth();
   const { woTypes, loading: typesLoading } = useWOTypes();
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -65,8 +62,7 @@ export default function NewWorkOrderPage() {
   useEffect(() => {
     (async () => {
       try {
-        const token = await getToken();
-        const data = await apiFetch<GeoOption[]>(`/api/v1/projects/${PROJECT_ID}/sites`, token!);
+        const data = await apiFetch<GeoOption[]>(`/api/v1/projects/${PROJECT_ID}/sites`, "");
         setSites(data);
       } catch { }
     })();
@@ -77,10 +73,9 @@ export default function NewWorkOrderPage() {
     if (!siteId) { setAssets([]); setAssetId(""); return; }
     (async () => {
       try {
-        const token = await getToken();
         const [locs, assetList] = await Promise.all([
-          apiFetch<GeoOption[]>(`/api/v1/sites/${siteId}/locations`, token!),
-          apiFetch<GeoOption[]>(`/api/v1/projects/${PROJECT_ID}/assets?site_id=${siteId}`, token!),
+          apiFetch<GeoOption[]>(`/api/v1/sites/${siteId}/locations`, ""),
+          apiFetch<GeoOption[]>(`/api/v1/projects/${PROJECT_ID}/assets?site_id=${siteId}`, ""),
         ]);
         setLocations(locs);
         setAssets(assetList);
@@ -93,8 +88,7 @@ export default function NewWorkOrderPage() {
     if (!locationId) return;
     (async () => {
       try {
-        const token = await getToken();
-        const data = await apiFetch<GeoOption[]>(`/api/v1/locations/${locationId}/units`, token!);
+        const data = await apiFetch<GeoOption[]>(`/api/v1/locations/${locationId}/units`, "");
         setUnits(data);
       } catch { }
     })();
@@ -105,8 +99,7 @@ export default function NewWorkOrderPage() {
     if (!unitId) return;
     (async () => {
       try {
-        const token = await getToken();
-        const data = await apiFetch<GeoOption[]>(`/api/v1/units/${unitId}/partitions`, token!);
+        const data = await apiFetch<GeoOption[]>(`/api/v1/units/${unitId}/partitions`, "");
         setPartitions(data);
       } catch { }
     })();
@@ -118,7 +111,6 @@ export default function NewWorkOrderPage() {
     setError(null);
     setSubmitting(true);
     try {
-      const token = await getToken();
       const payload: WorkOrderCreate = {
         wo_type_id: selectedType.id,
         title, description, priority: priority as any,
@@ -135,13 +127,13 @@ export default function NewWorkOrderPage() {
       if (selectedType.category === "corrective") {
         payload.corrective_detail = { fault_description: faultDescription, failure_cause: failureCause as any, resolution };
       } else if (selectedType.category === "preventive") {
-        payload.pm_detail = { recurrence: recurrence as any, last_serviced_date: lastServiced || undefined, checklist_items: pmItems.filter(Boolean).map((d, i) => ({ description: d, order_index: i })) };
+        payload.pm_detail = { recurrence: recurrence as any, last_serviced_date: lastServiced || undefined, checklist_items: pmItems.filter(Boolean).map((d, i) => ({ description: d, order_index: i })) as any };
       } else if (selectedType.category === "inspection") {
-        payload.inspection_detail = { condition_rating: conditionRating ? Number(conditionRating) : undefined, signed_off_by: signedOffBy || undefined, checklist_items: inspectionItems.filter(Boolean).map((d, i) => ({ description: d, order_index: i })) };
+        payload.inspection_detail = { condition_rating: conditionRating ? Number(conditionRating) : undefined, signed_off_by: signedOffBy || undefined, checklist_items: inspectionItems.filter(Boolean).map((d, i) => ({ description: d, order_index: i })) as any };
       } else if (selectedType.category === "operations") {
-        payload.operations_detail = { shift_start: shiftStart || undefined, shift_end: shiftEnd || undefined, steps: steps.filter(Boolean).map((d, i) => ({ description: d, order_index: i })) };
+        payload.operations_detail = { shift_start: shiftStart || undefined, shift_end: shiftEnd || undefined, steps: steps.filter(Boolean).map((d, i) => ({ description: d, order_index: i })) as any };
       }
-      const wo = await createWorkOrder(PROJECT_ID, payload, token!);
+      const wo = await createWorkOrder(PROJECT_ID, payload, "");
       router.push(`/dashboard/work-orders/${wo.id}`);
     } catch (e: any) {
       setError(e.message);
@@ -155,10 +147,7 @@ export default function NewWorkOrderPage() {
     const byCategory = ["corrective", "preventive", "inspection", "operations"] as const;
 
     return (
-      <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
-        <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
-        <Sidebar active="work-orders" />
-        <main style={{ flex: 1, overflow: "auto", padding: "40px" }}>
+      <main style={{ overflow: "auto", padding: "40px" }}>
           <div style={{ maxWidth: "700px" }}>
             <button onClick={() => router.push("/dashboard/work-orders")} style={{ background: "none", border: "none", color: "#857462", cursor: "pointer", fontSize: "13px", marginBottom: "16px", padding: 0, display: "flex", alignItems: "center", gap: "4px" }}>
               <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>arrow_back</span> Back to Work Orders
@@ -211,17 +200,13 @@ export default function NewWorkOrderPage() {
               );
             })}
           </div>
-        </main>
-      </div>
+      </main>
     );
   }
 
   // ── Step 2: fill form ──────────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
-      <Sidebar active="work-orders" />
-      <main style={{ flex: 1, overflow: "auto", padding: "40px" }}>
+    <main style={{ overflow: "auto", padding: "40px" }}>
         <div style={{ maxWidth: "760px" }}>
           <button onClick={() => setStep(1)} style={{ background: "none", border: "none", color: "#857462", cursor: "pointer", fontSize: "13px", marginBottom: "16px", padding: 0 }}>
             ← Change Type
@@ -415,8 +400,7 @@ export default function NewWorkOrderPage() {
             </div>
           </form>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }
 

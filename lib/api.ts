@@ -1,18 +1,44 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefresh(): Promise<boolean> {
+  if (isRefreshing && refreshPromise) return refreshPromise;
+  isRefreshing = true;
+  refreshPromise = fetch(`${API_URL}/api/v1/auth/refresh`, {
+    method: "POST",
+    credentials: "include",
+  }).then((r) => r.ok).finally(() => {
+    isRefreshing = false;
+    refreshPromise = null;
+  });
+  return refreshPromise;
+}
+
 export async function apiFetch<T>(
   path: string,
-  token: string,
+  _tokenIgnored?: string,
   options: RequestInit = {}
 ): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...options.headers,
-    },
-  });
+  const doFetch = () =>
+    fetch(`${API_URL}${path}`, {
+      ...options,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
+
+  let res = await doFetch();
+
+  if (res.status === 401) {
+    const ok = await tryRefresh();
+    if (ok) {
+      res = await doFetch();
+    }
+  }
 
   if (res.status === 204) return null as T;
 
@@ -29,14 +55,22 @@ export async function apiFetch<T>(
 
 export async function apiUpload<T>(
   path: string,
-  token: string,
-  formData: FormData
+  _tokenIgnored?: string,
+  formData?: FormData
 ): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${token}` },
-    body: formData,
-  });
+  const doFetch = () =>
+    fetch(`${API_URL}${path}`, {
+      method: "POST",
+      credentials: "include",
+      body: formData,
+    });
+
+  let res = await doFetch();
+
+  if (res.status === 401) {
+    const ok = await tryRefresh();
+    if (ok) res = await doFetch();
+  }
 
   const data = await res.json();
   if (!res.ok) throw new Error(data.detail || "Upload failed");

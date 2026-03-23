@@ -1,10 +1,8 @@
 "use client";
 
 import React, { useEffect, useRef, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { useDrawingViewer } from "../../../../lib/hooks/useDrawingViewer";
-import Sidebar from "../../../components/Sidebar";
 import { Pin } from "../../../../lib/models/drawings";
 import { Site, Location, GeoUnit, Partition, fetchSites, fetchLocations, fetchUnits, fetchPartitions } from "../../../../lib/models/geography";
 import { Asset, fetchAssets } from "../../../../lib/models/assets";
@@ -67,17 +65,13 @@ export default function DrawingViewer({ documentId, initialPage = 1 }: { documen
   const [unitId, setUnitId] = useState("");
   const [partitionId, setPartitionId] = useState("");
 
-  const { getToken } = useAuth();
 
   // Load sites and disciplines on mount
   useEffect(() => {
     const projectId = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
-    getToken().then((token) => {
-      if (!token) return;
-      fetchSites(token).then(setSites).catch(() => {});
-      fetchDisciplines(projectId, token).then(setDisciplines).catch(() => {});
-    });
-  }, [getToken]);
+    fetchSites("").then(setSites).catch(() => {});
+    fetchDisciplines(projectId, "").then(setDisciplines).catch(() => {});
+  }, []);
 
   // Cascade: load locations + assets when site changes
   useEffect(() => {
@@ -85,50 +79,39 @@ export default function DrawingViewer({ documentId, initialPage = 1 }: { documen
     setLocationsList([]); setUnitsList([]); setPartitionsList([]); setAssetsList([]);
     if (!siteId) return;
     const projectId = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
-    getToken().then((token) => {
-      if (!token) return;
-      fetchLocations(Number(siteId), token).then(setLocationsList).catch(() => {});
-      fetchAssets(projectId, token, { site_id: Number(siteId), page_size: 200 }).then(setAssetsList).catch(() => {});
-    });
-  }, [siteId, getToken]);
+    fetchLocations(Number(siteId), "").then(setLocationsList).catch(() => {});
+    fetchAssets(projectId, "", { site_id: Number(siteId), page_size: 200 }).then(setAssetsList).catch(() => {});
+  }, [siteId]);
 
   // Cascade: load units when location changes
   useEffect(() => {
     setUnitId(""); setPartitionId("");
     setUnitsList([]); setPartitionsList([]);
     if (!locationId) return;
-    getToken().then((token) => {
-      if (token) fetchUnits(Number(locationId), token).then(setUnitsList).catch(() => {});
-    });
-  }, [locationId, getToken]);
+    fetchUnits(Number(locationId), "").then(setUnitsList).catch(() => {});
+  }, [locationId]);
 
   // Cascade: load partitions when unit changes
   useEffect(() => {
     setPartitionId(""); setPartitionsList([]);
     if (!unitId) return;
-    getToken().then((token) => {
-      if (token) fetchPartitions(Number(unitId), token).then(setPartitionsList).catch(() => {});
-    });
-  }, [unitId, getToken]);
+    fetchPartitions(Number(unitId), "").then(setPartitionsList).catch(() => {});
+  }, [unitId]);
 
   // Cascade: load groups when discipline changes
   useEffect(() => {
     setGroupId(""); setSubgroupId("");
     setGroupsList([]); setSubgroupsList([]);
     if (!disciplineId) return;
-    getToken().then((token) => {
-      if (token) fetchGroups(Number(disciplineId), token).then(setGroupsList).catch(() => {});
-    });
-  }, [disciplineId, getToken]);
+    fetchGroups(Number(disciplineId), "").then(setGroupsList).catch(() => {});
+  }, [disciplineId]);
 
   // Cascade: load subgroups when group changes
   useEffect(() => {
     setSubgroupId(""); setSubgroupsList([]);
     if (!groupId) return;
-    getToken().then((token) => {
-      if (token) fetchSubgroups(Number(groupId), token).then(setSubgroupsList).catch(() => {});
-    });
-  }, [groupId, getToken]);
+    fetchSubgroups(Number(groupId), "").then(setSubgroupsList).catch(() => {});
+  }, [groupId]);
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -256,31 +239,22 @@ export default function DrawingViewer({ documentId, initialPage = 1 }: { documen
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar active="documents" />
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-gray-400">Loading document...</p>
-        </main>
-      </div>
+      <main className="flex-1 flex items-center justify-center">
+        <p className="text-gray-400">Loading document...</p>
+      </main>
     );
   }
 
   if (error || !document) {
     return (
-      <div className="flex min-h-screen bg-gray-50">
-        <Sidebar active="documents" />
-        <main className="flex-1 flex items-center justify-center">
-          <p className="text-red-500">{error || "Document not found"}</p>
-        </main>
-      </div>
+      <main className="flex-1 flex items-center justify-center">
+        <p className="text-red-500">{error || "Document not found"}</p>
+      </main>
     );
   }
 
   return (
-    <div className="flex h-screen bg-gray-50">
-      <Sidebar active="documents" />
-
-      <main className="flex-1 flex flex-col overflow-hidden">
+    <main className="flex-1 flex flex-col overflow-hidden">
         {/* Action error banner */}
         {actionError && (
           <div className="flex items-center justify-between bg-red-50 border-b border-red-200 px-6 py-2 text-sm text-red-700">
@@ -422,7 +396,7 @@ export default function DrawingViewer({ documentId, initialPage = 1 }: { documen
                     top: `${pin.y_percent}%`,
                     transform: "translate(-50%, -50%)",
                   }}
-                  className={`w-5 h-5 rounded-full border-2 shadow-md cursor-pointer transition-transform hover:scale-125 z-10 ${PIN_COLOR[pin.status] || PIN_COLOR.pending} ${pin.id === selectedPinId ? "scale-125 ring-2 ring-white" : ""} ${pin.id === hoveredPinId ? "scale-150 ring-4 ring-white ring-opacity-80" : ""}`}
+                  className={`w-3.5 h-3.5 rounded-full border-2 shadow-md cursor-pointer transition-transform hover:scale-125 z-10 ${PIN_COLOR[pin.status] || PIN_COLOR.pending} ${pin.id === selectedPinId ? "scale-125 ring-2 ring-white" : ""} ${pin.id === hoveredPinId ? "scale-150 ring-4 ring-white ring-opacity-80" : ""}`}
                   title={pin.status === "confirmed" && pin.asset_id ? `${pin.tag} — view asset` : pin.tag}
                 />
               ))}
@@ -470,8 +444,7 @@ export default function DrawingViewer({ documentId, initialPage = 1 }: { documen
             )}
           </div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }
 
@@ -763,13 +736,83 @@ function NewPinForm({
   );
 }
 
-function PinList({ pins, onSelect, onHover }: { pins: Pin[]; onSelect: (id: number) => void; onHover: (id: number | null) => void }) {
+function PinRow({ pin, onSelect, onHover }: { pin: Pin; onSelect?: (id: number) => void; onHover: (id: number | null) => void }) {
   const router = useRouter();
+  const isPending = pin.status === "pending";
+
+  if (isPending) {
+    return (
+      <button
+        onClick={() => onSelect?.(pin.id)}
+        onMouseEnter={() => onHover(pin.id)}
+        onMouseLeave={() => onHover(null)}
+        className="w-full text-left px-3 py-2 rounded-lg hover:bg-amber-50 text-sm mb-1 flex items-center gap-2"
+      >
+        <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+        <span className="font-medium text-gray-800">{pin.tag}</span>
+        {pin.asset_type && <span className="text-gray-400 text-xs truncate">{pin.asset_type}</span>}
+      </button>
+    );
+  }
+
+  if (pin.asset_id) {
+    return (
+      <button
+        onClick={() => router.push(`/dashboard/assets/${pin.asset_id}`)}
+        onMouseEnter={() => onHover(pin.id)}
+        onMouseLeave={() => onHover(null)}
+        className="w-full text-left px-3 py-2 rounded-lg hover:bg-green-50 text-sm mb-1 flex items-center gap-2 group"
+      >
+        <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+        <span className="text-gray-700 group-hover:text-green-700 font-medium">{pin.tag}</span>
+        <span className="ml-auto text-xs text-gray-300 group-hover:text-green-500">→</span>
+      </button>
+    );
+  }
+
+  return (
+    <div
+      onMouseEnter={() => onHover(pin.id)}
+      onMouseLeave={() => onHover(null)}
+      className="px-3 py-2 text-sm mb-1 flex items-center gap-2 text-gray-500"
+    >
+      <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+      <span>{pin.tag}</span>
+    </div>
+  );
+}
+
+function PinList({ pins, onSelect, onHover }: { pins: Pin[]; onSelect: (id: number) => void; onHover: (id: number | null) => void }) {
   const pending = pins.filter((p) => p.status === "pending");
   const confirmed = pins.filter((p) => p.status === "confirmed");
 
+  // Group confirmed pins by location → unit
+  type Group = { locationName: string | null; unitName: string | null; locationId: number | null; unitId: number | null; pins: Pin[] };
+  const groupMap = new Map<string, Group>();
+
+  for (const pin of confirmed) {
+    const key = `${pin.location_id ?? "none"}__${pin.unit_id ?? "none"}`;
+    if (!groupMap.has(key)) {
+      groupMap.set(key, {
+        locationName: pin.location_name,
+        unitName: pin.unit_name,
+        locationId: pin.location_id,
+        unitId: pin.unit_id,
+        pins: [],
+      });
+    }
+    groupMap.get(key)!.pins.push(pin);
+  }
+
+  // Sort: unassigned (no location) last
+  const groups = Array.from(groupMap.values()).sort((a, b) => {
+    if (!a.locationId && b.locationId) return 1;
+    if (a.locationId && !b.locationId) return -1;
+    return (a.locationName ?? "").localeCompare(b.locationName ?? "");
+  });
+
   return (
-    <div className="p-4 flex flex-col gap-4">
+    <div className="p-4 flex flex-col gap-3">
       <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide">
         Detected Assets
       </h3>
@@ -780,57 +823,50 @@ function PinList({ pins, onSelect, onHover }: { pins: Pin[]; onSelect: (id: numb
         </p>
       )}
 
+      {/* Pending — always shown flat, no location yet */}
       {pending.length > 0 && (
         <div>
-          <p className="text-xs font-medium text-amber-600 mb-2">
-            Pending Review ({pending.length})
-          </p>
+          <div className="flex items-center gap-2 mb-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
+            <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">
+              Pending Review ({pending.length})
+            </p>
+          </div>
           {pending.map((pin) => (
-            <button
-              key={pin.id}
-              onClick={() => onSelect(pin.id)}
-              onMouseEnter={() => onHover(pin.id)}
-              onMouseLeave={() => onHover(null)}
-              className="w-full text-left px-3 py-2 rounded-lg hover:bg-amber-50 text-sm mb-1 flex items-center gap-2"
-            >
-              <span className="w-2 h-2 rounded-full bg-amber-400 flex-shrink-0" />
-              <span className="font-medium">{pin.tag}</span>
-              <span className="text-gray-400 text-xs">{pin.asset_type}</span>
-            </button>
+            <PinRow key={pin.id} pin={pin} onSelect={onSelect} onHover={onHover} />
           ))}
         </div>
       )}
 
+      {/* Confirmed — grouped by location › unit */}
       {confirmed.length > 0 && (
-        <div>
-          <p className="text-xs font-medium text-green-600 mb-2">
-            Confirmed ({confirmed.length})
-          </p>
-          {confirmed.map((pin) => (
-            pin.asset_id ? (
-              <button
-                key={pin.id}
-                onClick={() => router.push(`/dashboard/assets/${pin.asset_id}`)}
-                onMouseEnter={() => onHover(pin.id)}
-                onMouseLeave={() => onHover(null)}
-                className="w-full text-left px-3 py-2 rounded-lg hover:bg-green-50 text-sm mb-1 flex items-center gap-2 group"
-              >
-                <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                <span className="text-gray-700 group-hover:text-green-700 font-medium">{pin.tag}</span>
-                <span className="ml-auto text-xs text-gray-300 group-hover:text-green-500">→</span>
-              </button>
-            ) : (
-              <div
-                key={pin.id}
-                onMouseEnter={() => onHover(pin.id)}
-                onMouseLeave={() => onHover(null)}
-                className="px-3 py-2 text-sm mb-1 flex items-center gap-2 text-gray-500"
-              >
-                <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
-                <span>{pin.tag}</span>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+            <p className="text-xs font-semibold text-green-600 uppercase tracking-wide">
+              Confirmed ({confirmed.length})
+            </p>
+          </div>
+          {groups.map((group) => {
+            const groupLabel = group.locationName
+              ? group.unitName
+                ? `${group.locationName} › ${group.unitName}`
+                : group.locationName
+              : "Unassigned";
+            return (
+              <div key={`${group.locationId}-${group.unitId}`}>
+                <p className="text-xs text-gray-400 font-medium px-1 mb-1 flex items-center gap-1">
+                  <span style={{ fontSize: "12px" }}>📍</span>
+                  {groupLabel}
+                </p>
+                <div className="border-l-2 border-gray-100 ml-2 pl-1">
+                  {group.pins.map((pin) => (
+                    <PinRow key={pin.id} pin={pin} onHover={onHover} />
+                  ))}
+                </div>
               </div>
-            )
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

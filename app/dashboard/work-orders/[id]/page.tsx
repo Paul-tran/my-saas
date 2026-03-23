@@ -2,8 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@clerk/nextjs";
-import Sidebar from "../../../components/Sidebar";
 import ErrorBanner from "../../../components/ErrorBanner";
 import {
   WorkOrder, WOComment,
@@ -31,7 +29,6 @@ const STATUS_STYLE: Record<string, { bg: string; color: string }> = {
 export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
   const router = useRouter();
-  const { getToken } = useAuth();
 
   const [wo, setWo] = useState<WorkOrder | null>(null);
   const [comments, setComments] = useState<WOComment[]>([]);
@@ -45,10 +42,9 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   async function load() {
     try {
-      const token = await getToken();
       const [woData, commentData] = await Promise.all([
-        fetchWorkOrder(Number(id), token!),
-        fetchComments(Number(id), token!),
+        fetchWorkOrder(Number(id), ""),
+        fetchComments(Number(id), ""),
       ]);
       setWo(woData);
       setLabourHours(woData.labour_hours?.toString() ?? "");
@@ -62,14 +58,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   async function changeStatus(status: WorkOrder["status"]) {
     try {
-      const token = await getToken();
       const update: any = { status };
       if (status === "completed" && !wo?.completed_date) {
         update.completed_date = new Date().toISOString().split("T")[0];
       }
-      const updated = await updateWorkOrder(Number(id), update, token!);
+      const updated = await updateWorkOrder(Number(id), update, "");
       setWo(updated);
-      const newComments = await fetchComments(Number(id), token!);
+      const newComments = await fetchComments(Number(id), "");
       setComments(newComments);
     } catch (e: any) { setError(e.message); }
   }
@@ -77,8 +72,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   async function saveLabourHours() {
     if (!labourHours) return;
     try {
-      const token = await getToken();
-      const updated = await updateWorkOrder(Number(id), { labour_hours: parseFloat(labourHours) }, token!);
+      const updated = await updateWorkOrder(Number(id), { labour_hours: parseFloat(labourHours) }, "");
       setWo(updated);
     } catch (e: any) { setError(e.message); }
   }
@@ -88,8 +82,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
     if (!commentText.trim()) return;
     setSubmittingComment(true);
     try {
-      const token = await getToken();
-      const comment = await addComment(Number(id), commentText.trim(), token!);
+      const comment = await addComment(Number(id), commentText.trim(), "");
       setComments((prev) => [...prev, comment]);
       setCommentText("");
     } catch (e: any) { setError(e.message); }
@@ -98,27 +91,24 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
 
   async function togglePMItem(itemId: number, checked: boolean) {
     try {
-      const token = await getToken();
-      await updatePMChecklistItem(itemId, !checked, token!);
-      const updated = await fetchWorkOrder(Number(id), token!);
+      await updatePMChecklistItem(itemId, !checked, "");
+      const updated = await fetchWorkOrder(Number(id), "");
       setWo(updated);
     } catch (e: any) { setError(e.message); }
   }
 
   async function setInspectionResult(itemId: number, result: "pass" | "fail" | "na") {
     try {
-      const token = await getToken();
-      await updateInspectionChecklistItem(itemId, result, token!);
-      const updated = await fetchWorkOrder(Number(id), token!);
+      await updateInspectionChecklistItem(itemId, result, "");
+      const updated = await fetchWorkOrder(Number(id), "");
       setWo(updated);
     } catch (e: any) { setError(e.message); }
   }
 
   async function toggleStep(stepId: number, completed: boolean) {
     try {
-      const token = await getToken();
-      await updateOperationsStep(stepId, !completed, token!);
-      const updated = await fetchWorkOrder(Number(id), token!);
+      await updateOperationsStep(stepId, !completed, "");
+      const updated = await fetchWorkOrder(Number(id), "");
       setWo(updated);
     } catch (e: any) { setError(e.message); }
   }
@@ -126,8 +116,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   async function handleDelete() {
     if (!confirm("Delete this work order? This cannot be undone.")) return;
     try {
-      const token = await getToken();
-      await deleteWorkOrder(Number(id), token!);
+      await deleteWorkOrder(Number(id), "");
       router.push("/dashboard/work-orders");
     } catch (e: any) { setError(e.message); }
   }
@@ -140,11 +129,7 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const statusStyle = STATUS_STYLE[wo.status] ?? { bg: "#f3f4f5", color: "#524534" };
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
-      <Sidebar active="work-orders" />
-
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <main style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "24px 40px", background: "rgba(255,255,255,0.7)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(215,195,174,0.2)", flexShrink: 0 }}>
           <button onClick={() => router.push("/dashboard/work-orders")} style={{ background: "none", border: "none", color: "#857462", cursor: "pointer", fontSize: "13px", marginBottom: "12px", padding: 0, display: "flex", alignItems: "center", gap: "4px" }}>
@@ -403,17 +388,13 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
             </form>
           </div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)" }}>
-      <Sidebar active="work-orders" />
-      <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>{children}</main>
-    </div>
+    <main style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>{children}</main>
   );
 }
 

@@ -2,8 +2,6 @@
 
 export const dynamic = "force-dynamic";
 
-import { useAuth } from "@clerk/nextjs";
-import Sidebar from "../../components/Sidebar";
 import { useBilling } from "../../../lib/hooks/useBilling";
 import { STATUS_LABEL, STATUS_COLOR, simulateBilling } from "../../../lib/models/billing";
 
@@ -11,21 +9,14 @@ const DEV_SCENARIOS = ["trial", "active", "past_due", "canceled"] as const;
 
 export default function BillingPage() {
   const { subscription, loading, redirecting, handleStartTrial, handleManage, reload } = useBilling();
-  const { getToken } = useAuth();
 
   async function handleSimulate(scenario: typeof DEV_SCENARIOS[number]) {
-    const token = await getToken();
-    if (!token) return;
-    await simulateBilling(scenario, token);
+    await simulateBilling(scenario, "");
     reload();
   }
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
-      <Sidebar active="billing" />
-
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <main style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "32px 40px 24px", background: "rgba(255,255,255,0.7)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(215,195,174,0.2)", flexShrink: 0 }}>
           <span style={{ fontSize: "10px", fontWeight: 700, color: "#835500", textTransform: "uppercase", letterSpacing: "0.3em", display: "block", marginBottom: "4px" }}>Account</span>
@@ -129,7 +120,6 @@ export default function BillingPage() {
             )}
           </div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }

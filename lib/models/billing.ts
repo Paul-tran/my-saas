@@ -12,18 +12,18 @@ export type Subscription = {
   updated_at: string;
 };
 
-export async function fetchSubscription(token: string): Promise<Subscription | null> {
+export async function fetchSubscription(token?: string): Promise<Subscription | null> {
   return apiFetch("/api/v1/billing/subscription", token);
 }
 
-export async function startCheckout(token: string): Promise<string> {
+export async function startCheckout(token?: string): Promise<string> {
   const res = await apiFetch<{ url: string }>("/api/v1/billing/checkout", token, {
     method: "POST",
   });
   return res.url;
 }
 
-export async function openPortal(token: string): Promise<string> {
+export async function openPortal(token?: string): Promise<string> {
   const res = await apiFetch<{ url: string }>("/api/v1/billing/portal", token, {
     method: "POST",
   });
@@ -32,7 +32,7 @@ export async function openPortal(token: string): Promise<string> {
 
 export async function simulateBilling(
   scenario: "trial" | "active" | "past_due" | "canceled",
-  token: string
+  token?: string
 ): Promise<Subscription> {
   return apiFetch(`/api/v1/billing/simulate/${scenario}`, token, { method: "POST" });
 }

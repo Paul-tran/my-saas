@@ -4,8 +4,6 @@ export const dynamic = "force-dynamic";
 
 import React, { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@clerk/nextjs";
-import Sidebar from "../../../components/Sidebar";
 import { Asset, fetchAsset, fetchAssetChildren, fetchAssets, updateAsset, AssetDrawing, fetchAssetDrawings } from "../../../../lib/models/assets";
 import { Site, Location, GeoUnit, Partition, fetchSite, fetchLocation, fetchUnit, fetchPartition } from "../../../../lib/models/geography";
 import {
@@ -64,7 +62,6 @@ function AssetPicker({
   onCancel: () => void;
   placeholder?: string;
 }) {
-  const { getToken } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Asset[]>([]);
   const [searching, setSearching] = useState(false);
@@ -75,14 +72,12 @@ function AssetPicker({
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(async () => {
       setSearching(true);
-      const token = await getToken();
-      if (!token) return;
-      const all = await fetchAssets(PROJECT_ID, token, { search: query, page_size: 20 }).catch(() => []);
+      const all = await fetchAssets(PROJECT_ID, "", { search: query, page_size: 20 }).catch(() => []);
       setResults(all.filter((a) => !excludeIds.includes(a.id)));
       setSearching(false);
     }, 300);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [query, excludeIds, getToken]);
+  }, [query, excludeIds, ]);
 
   return (
     <div style={{ marginTop: "10px" }}>
@@ -129,7 +124,6 @@ function AssetPicker({
 
 export default function AssetDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = React.use(params);
-  const { getToken } = useAuth();
 
   const [asset, setAsset] = useState<Asset | null>(null);
   const [parent, setParent] = useState<Asset | null>(null);
@@ -162,37 +156,35 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 
   useEffect(() => {
     async function load() {
-      const token = await getToken();
-      if (!token) return;
       try {
-        const a = await fetchAsset(Number(id), token);
+        const a = await fetchAsset(Number(id), "");
         setAsset(a);
 
         const [kids, drws] = await Promise.all([
-          fetchAssetChildren(Number(id), token),
-          fetchAssetDrawings(Number(id), token),
+          fetchAssetChildren(Number(id), ""),
+          fetchAssetDrawings(Number(id), ""),
         ]);
         setChildren(kids);
         setDrawings(drws);
 
         if (a.parent_id) {
-          fetchAsset(a.parent_id, token).then(setParent).catch(() => {});
+          fetchAsset(a.parent_id, "").then(setParent).catch(() => {});
         }
 
         const geoFetches: Promise<void>[] = [];
-        if (a.site_id) geoFetches.push(fetchSite(a.site_id, token).then(setSite).catch(() => {}));
-        if (a.location_id) geoFetches.push(fetchLocation(a.location_id, token).then(setLocation).catch(() => {}));
-        if (a.unit_id) geoFetches.push(fetchUnit(a.unit_id, token).then(setUnit).catch(() => {}));
-        if (a.partition_id) geoFetches.push(fetchPartition(a.partition_id, token).then(setPartition).catch(() => {}));
+        if (a.site_id) geoFetches.push(fetchSite(a.site_id, "").then(setSite).catch(() => {}));
+        if (a.location_id) geoFetches.push(fetchLocation(a.location_id, "").then(setLocation).catch(() => {}));
+        if (a.unit_id) geoFetches.push(fetchUnit(a.unit_id, "").then(setUnit).catch(() => {}));
+        if (a.partition_id) geoFetches.push(fetchPartition(a.partition_id, "").then(setPartition).catch(() => {}));
 
         if (a.subgroup_id) {
           geoFetches.push(
-            fetchSubgroup(a.subgroup_id, token).then(async (sg) => {
+            fetchSubgroup(a.subgroup_id, "").then(async (sg) => {
               setSubgroup(sg);
-              const g = await fetchGroup(sg.group_id, token).catch(() => null);
+              const g = await fetchGroup(sg.group_id, "").catch(() => null);
               if (g) {
                 setSysGroup(g);
-                const d = await fetchDiscipline(g.discipline_id, token).catch(() => null);
+                const d = await fetchDiscipline(g.discipline_id, "").catch(() => null);
                 if (d) setDiscipline(d);
               }
             }).catch(() => {})
@@ -207,14 +199,12 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
       }
     }
     load();
-  }, [id, getToken]);
+  }, [id, ]);
 
   async function handleRemoveParent() {
     if (!asset) return;
-    const token = await getToken();
-    if (!token) return;
     try {
-      await updateAsset(asset.id, { parent_id: null }, token);
+      await updateAsset(asset.id, { parent_id: null }, "");
       setAsset({ ...asset, parent_id: null });
       setParent(null);
     } catch (e: any) { setSaveError(e.message); }
@@ -222,10 +212,8 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 
   async function handleAssignParent(selected: Asset) {
     if (!asset) return;
-    const token = await getToken();
-    if (!token) return;
     try {
-      await updateAsset(asset.id, { parent_id: selected.id }, token);
+      await updateAsset(asset.id, { parent_id: selected.id }, "");
       setAsset({ ...asset, parent_id: selected.id });
       setParent(selected);
       setShowAssignParent(false);
@@ -234,10 +222,8 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
 
   async function handleAddChild(selected: Asset) {
     if (!asset) return;
-    const token = await getToken();
-    if (!token) return;
     try {
-      const updated = await updateAsset(selected.id, { parent_id: asset.id }, token);
+      const updated = await updateAsset(selected.id, { parent_id: asset.id }, "");
       setChildren((prev) => {
         if (prev.find((c) => c.id === selected.id)) return prev;
         return [...prev, updated];
@@ -247,25 +233,21 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
   }
 
   async function handleRemoveChild(childId: number) {
-    const token = await getToken();
-    if (!token) return;
     try {
-      await updateAsset(childId, { parent_id: null }, token);
+      await updateAsset(childId, { parent_id: null }, "");
       setChildren((prev) => prev.filter((c) => c.id !== childId));
     } catch (e: any) { setSaveError(e.message); }
   }
 
   async function openSystemEdit() {
-    const token = await getToken();
-    if (!token) return;
-    const discs = await fetchDisciplines(PROJECT_ID, token).catch(() => []);
+    const discs = await fetchDisciplines(PROJECT_ID, "").catch(() => []);
     setAllDisciplines(discs);
     if (discipline && sysGroup && subgroup) {
       setEditDisciplineId(String(discipline.id));
-      const gs = await fetchGroups(discipline.id, token).catch(() => []);
+      const gs = await fetchGroups(discipline.id, "").catch(() => []);
       setEditGroupsList(gs);
       setEditGroupId(String(sysGroup.id));
-      const ss = await fetchSubgroups(sysGroup.id, token).catch(() => []);
+      const ss = await fetchSubgroups(sysGroup.id, "").catch(() => []);
       setEditSubgroupsList(ss);
       setEditSubgroupId(String(subgroup.id));
     } else {
@@ -279,9 +261,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     setEditDisciplineId(id);
     setEditGroupId(""); setEditSubgroupId(""); setEditGroupsList([]); setEditSubgroupsList([]);
     if (!id) return;
-    const token = await getToken();
-    if (!token) return;
-    const gs = await fetchGroups(Number(id), token).catch(() => []);
+    const gs = await fetchGroups(Number(id), "").catch(() => []);
     setEditGroupsList(gs);
   }
 
@@ -289,24 +269,20 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
     setEditGroupId(id);
     setEditSubgroupId(""); setEditSubgroupsList([]);
     if (!id) return;
-    const token = await getToken();
-    if (!token) return;
-    const ss = await fetchSubgroups(Number(id), token).catch(() => []);
+    const ss = await fetchSubgroups(Number(id), "").catch(() => []);
     setEditSubgroupsList(ss);
   }
 
   async function handleSaveSystem() {
     if (!asset || !editSubgroupId) return;
-    const token = await getToken();
-    if (!token) return;
     try {
-      await updateAsset(asset.id, { subgroup_id: Number(editSubgroupId) }, token);
+      await updateAsset(asset.id, { subgroup_id: Number(editSubgroupId) }, "");
       setAsset({ ...asset, subgroup_id: Number(editSubgroupId) });
-      const sg = await fetchSubgroup(Number(editSubgroupId), token);
+      const sg = await fetchSubgroup(Number(editSubgroupId), "");
       setSubgroup(sg);
-      const g = await fetchGroup(sg.group_id, token);
+      const g = await fetchGroup(sg.group_id, "");
       setSysGroup(g);
-      const d = await fetchDiscipline(g.discipline_id, token);
+      const d = await fetchDiscipline(g.discipline_id, "");
       setDiscipline(d);
       setEditingSystem(false);
     } catch (e: any) { setSaveError(e.message); }
@@ -315,32 +291,22 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
   const cardStyle = { background: "#fff", border: "1px solid rgba(215,195,174,0.2)", borderRadius: "12px", padding: "24px", boxShadow: "0 2px 8px rgba(25,28,29,0.05)" };
 
   if (loading) return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)" }}>
-      <Sidebar active="assets" />
-      <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "#857462" }}>Loading...</p>
-      </main>
-    </div>
+    <main style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <p style={{ color: "#857462" }}>Loading...</p>
+    </main>
   );
 
   if (error || !asset) return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)" }}>
-      <Sidebar active="assets" />
-      <main style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <p style={{ color: "#dc2626" }}>{error ?? "Asset not found"}</p>
-      </main>
-    </div>
+    <main style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <p style={{ color: "#dc2626" }}>{error ?? "Asset not found"}</p>
+    </main>
   );
 
   const excludeFromParentPicker = [asset.id, ...children.map((c) => c.id)];
   const excludeFromChildPicker = [asset.id, ...(asset.parent_id ? [asset.parent_id] : []), ...children.map((c) => c.id)];
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
-      <Sidebar active="assets" />
-
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <main style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "24px 40px", background: "rgba(255,255,255,0.7)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(215,195,174,0.2)", flexShrink: 0 }}>
           <Link href="/dashboard/assets" style={{ color: "#857462", fontSize: "13px", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: "6px", marginBottom: "12px" }}>
@@ -615,8 +581,7 @@ export default function AssetDetailPage({ params }: { params: Promise<{ id: stri
             )}
           </div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }
 

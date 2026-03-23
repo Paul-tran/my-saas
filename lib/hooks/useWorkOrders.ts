@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@clerk/nextjs";
 import {
   WorkOrder, WorkOrderCreate, WorkOrderUpdate,
   fetchWorkOrders, createWorkOrder, updateWorkOrder, deleteWorkOrder,
@@ -8,7 +7,6 @@ import {
 const PROJECT_ID = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
 
 export function useWorkOrders() {
-  const { getToken } = useAuth();
   const [workOrders, setWorkOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,8 +17,7 @@ export function useWorkOrders() {
 
   async function load() {
     try {
-      const token = await getToken();
-      setWorkOrders(await fetchWorkOrders(PROJECT_ID, token!));
+      setWorkOrders(await fetchWorkOrders(PROJECT_ID, ""));
     } catch (e: any) {
       setError(e.message);
     } finally {
@@ -30,8 +27,7 @@ export function useWorkOrders() {
 
   async function handleCreate(data: WorkOrderCreate) {
     try {
-      const token = await getToken();
-      const wo = await createWorkOrder(PROJECT_ID, data, token!);
+      const wo = await createWorkOrder(PROJECT_ID, data, "");
       setWorkOrders((prev) => [wo, ...prev]);
       return wo;
     } catch (e: any) { setError(e.message); throw e; }
@@ -39,8 +35,7 @@ export function useWorkOrders() {
 
   async function handleUpdate(woId: number, data: WorkOrderUpdate) {
     try {
-      const token = await getToken();
-      const updated = await updateWorkOrder(woId, data, token!);
+      const updated = await updateWorkOrder(woId, data, "");
       setWorkOrders((prev) => prev.map((w) => (w.id === woId ? updated : w)));
       return updated;
     } catch (e: any) { setError(e.message); }
@@ -48,8 +43,7 @@ export function useWorkOrders() {
 
   async function handleDelete(woId: number) {
     try {
-      const token = await getToken();
-      await deleteWorkOrder(woId, token!);
+      await deleteWorkOrder(woId, "");
       setWorkOrders((prev) => prev.filter((w) => w.id !== woId));
     } catch (e: any) { setError(e.message); }
   }

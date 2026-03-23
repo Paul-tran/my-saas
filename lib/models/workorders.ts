@@ -114,50 +114,50 @@ export const RECURRENCE_LABEL: Record<PMDetail["recurrence"], string> = {
   one_off: "One-Off", weekly: "Weekly", monthly: "Monthly", quarterly: "Quarterly", annually: "Annually",
 };
 
-export async function fetchWorkOrders(projectId: number, token: string): Promise<WorkOrder[]> {
+export async function fetchWorkOrders(projectId: number, token?: string): Promise<WorkOrder[]> {
   return apiFetch(`/api/v1/projects/${projectId}/work-orders`, token);
 }
 
-export async function fetchWorkOrder(woId: number, token: string): Promise<WorkOrder> {
+export async function fetchWorkOrder(woId: number, token?: string): Promise<WorkOrder> {
   return apiFetch(`/api/v1/work-orders/${woId}`, token);
 }
 
-export async function createWorkOrder(projectId: number, data: WorkOrderCreate, token: string): Promise<WorkOrder> {
+export async function createWorkOrder(projectId: number, data: WorkOrderCreate, token?: string): Promise<WorkOrder> {
   return apiFetch(`/api/v1/projects/${projectId}/work-orders`, token, { method: "POST", body: JSON.stringify(data) });
 }
 
-export async function updateWorkOrder(woId: number, data: WorkOrderUpdate, token: string): Promise<WorkOrder> {
+export async function updateWorkOrder(woId: number, data: WorkOrderUpdate, token?: string): Promise<WorkOrder> {
   return apiFetch(`/api/v1/work-orders/${woId}`, token, { method: "PATCH", body: JSON.stringify(data) });
 }
 
-export async function deleteWorkOrder(woId: number, token: string): Promise<void> {
+export async function deleteWorkOrder(woId: number, token?: string): Promise<void> {
   await apiFetch(`/api/v1/work-orders/${woId}`, token, { method: "DELETE" });
 }
 
-export async function fetchComments(woId: number, token: string): Promise<WOComment[]> {
+export async function fetchComments(woId: number, token?: string): Promise<WOComment[]> {
   return apiFetch(`/api/v1/work-orders/${woId}/comments`, token);
 }
 
-export async function addComment(woId: number, body: string, token: string): Promise<WOComment> {
+export async function addComment(woId: number, body: string, token?: string): Promise<WOComment> {
   return apiFetch(`/api/v1/work-orders/${woId}/comments`, token, { method: "POST", body: JSON.stringify({ body }) });
 }
 
-export async function updatePMChecklistItem(itemId: number, is_checked: boolean, token: string) {
+export async function updatePMChecklistItem(itemId: number, is_checked: boolean, token?: string) {
   return apiFetch(`/api/v1/pm-checklist-items/${itemId}`, token, { method: "PATCH", body: JSON.stringify({ is_checked }) });
 }
 
-export async function updateInspectionChecklistItem(itemId: number, result: "pass" | "fail" | "na", token: string) {
+export async function updateInspectionChecklistItem(itemId: number, result: "pass" | "fail" | "na", token?: string) {
   return apiFetch(`/api/v1/inspection-checklist-items/${itemId}`, token, { method: "PATCH", body: JSON.stringify({ result }) });
 }
 
-export async function updateOperationsStep(stepId: number, is_completed: boolean, token: string) {
+export async function updateOperationsStep(stepId: number, is_completed: boolean, token?: string) {
   return apiFetch(`/api/v1/operations-steps/${stepId}`, token, { method: "PATCH", body: JSON.stringify({ is_completed }) });
 }
 
-export async function updateCorrectiveDetail(woId: number, data: Partial<CorrectiveDetail>, token: string): Promise<WorkOrder> {
+export async function updateCorrectiveDetail(woId: number, data: Partial<CorrectiveDetail>, token?: string): Promise<WorkOrder> {
   return apiFetch(`/api/v1/work-orders/${woId}/corrective-detail`, token, { method: "PATCH", body: JSON.stringify(data) });
 }
 
-export async function updateInspectionDetail(woId: number, data: Partial<InspectionDetail>, token: string): Promise<WorkOrder> {
+export async function updateInspectionDetail(woId: number, data: Partial<InspectionDetail>, token?: string): Promise<WorkOrder> {
   return apiFetch(`/api/v1/work-orders/${woId}/inspection-detail`, token, { method: "PATCH", body: JSON.stringify(data) });
 }

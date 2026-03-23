@@ -3,7 +3,6 @@
 export const dynamic = "force-dynamic";
 
 import { useState } from "react";
-import Sidebar from "../../../components/Sidebar";
 import ErrorBanner from "../../../components/ErrorBanner";
 import { useGeography } from "../../../../lib/hooks/useGeography";
 import { Site, Location, GeoUnit, Partition } from "../../../../lib/models/geography";
@@ -188,11 +187,7 @@ export default function GeographyPage() {
   }
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
-      <Sidebar active="geography" />
-
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <main style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "32px 40px 24px", background: "rgba(255,255,255,0.7)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(215,195,174,0.2)", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between" }}>
@@ -419,8 +414,7 @@ export default function GeographyPage() {
             </div>
           )}
         </div>
-      </main>
-    </div>
+    </main>
   );
 }
 

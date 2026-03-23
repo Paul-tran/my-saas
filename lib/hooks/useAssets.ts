@@ -1,13 +1,11 @@
 "use client";
 
-import { useAuth } from "@clerk/nextjs";
 import { useState, useEffect, useCallback } from "react";
 import { Asset, AssetFilters, fetchAssets, deleteAsset } from "../models/assets";
 
 const PROJECT_ID = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
 
 export function useAssets(initialFilters: AssetFilters = {}) {
-  const { getToken } = useAuth();
   const [assets, setAssets] = useState<Asset[]>([]);
   const [filters, setFilters] = useState<AssetFilters>({ page: 1, page_size: 50, ...initialFilters });
   const [hasMore, setHasMore] = useState(false);
@@ -15,11 +13,9 @@ export function useAssets(initialFilters: AssetFilters = {}) {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (f: AssetFilters) => {
-    const token = await getToken();
-    if (!token) return;
     setLoading(true);
     try {
-      const data = await fetchAssets(PROJECT_ID, token, f);
+      const data = await fetchAssets(PROJECT_ID, "", f);
       setAssets(data);
       setHasMore(data.length === (f.page_size ?? 50));
     } catch (e: any) {
@@ -27,7 +23,7 @@ export function useAssets(initialFilters: AssetFilters = {}) {
     } finally {
       setLoading(false);
     }
-  }, [getToken]);
+  }, []);
 
   useEffect(() => {
     load(filters);
@@ -46,10 +42,8 @@ export function useAssets(initialFilters: AssetFilters = {}) {
   }
 
   async function handleDelete(id: number) {
-    const token = await getToken();
-    if (!token) return;
     try {
-      await deleteAsset(id, token);
+      await deleteAsset(id, "");
       setAssets((prev) => prev.filter((a) => a.id !== id));
     } catch (e: any) {
       setError(e.message);

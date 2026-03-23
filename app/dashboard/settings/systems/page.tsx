@@ -3,8 +3,6 @@
 export const dynamic = "force-dynamic";
 
 import React, { useEffect, useState } from "react";
-import { useAuth } from "@clerk/nextjs";
-import Sidebar from "../../../components/Sidebar";
 import {
   SystemLevelConfig, SystemDiscipline, SystemGroup, SystemSubgroup,
   fetchSystemConfig, updateSystemConfig,
@@ -62,7 +60,6 @@ function AddForm({
 }
 
 export default function SystemsPage() {
-  const { getToken } = useAuth();
 
   const [config, setConfig] = useState<SystemLevelConfig | null>(null);
   const [editingConfig, setEditingConfig] = useState(false);
@@ -79,12 +76,10 @@ export default function SystemsPage() {
 
   useEffect(() => {
     async function load() {
-      const token = await getToken();
-      if (!token) return;
       try {
         const [cfg, discs] = await Promise.all([
-          fetchSystemConfig(PROJECT_ID, token),
-          fetchDisciplines(PROJECT_ID, token),
+          fetchSystemConfig(PROJECT_ID, ""),
+          fetchDisciplines(PROJECT_ID, ""),
         ]);
         setConfig(cfg);
         setConfigDraft({ level1_name: cfg.level1_name, level2_name: cfg.level2_name, level3_name: cfg.level3_name });
@@ -96,7 +91,7 @@ export default function SystemsPage() {
       }
     }
     load();
-  }, [getToken]);
+  }, []);
 
   async function toggleDiscipline(d: SystemDiscipline) {
     if (expandedD.has(d.id)) {
@@ -105,9 +100,7 @@ export default function SystemsPage() {
     }
     setExpandedD((s) => new Set(s).add(d.id));
     if (!groups[d.id]) {
-      const token = await getToken();
-      if (!token) return;
-      const gs = await fetchGroups(d.id, token).catch(() => []);
+      const gs = await fetchGroups(d.id, "").catch(() => []);
       setGroups((prev) => ({ ...prev, [d.id]: gs }));
     }
   }
@@ -119,66 +112,50 @@ export default function SystemsPage() {
     }
     setExpandedG((s) => new Set(s).add(g.id));
     if (!subgroups[g.id]) {
-      const token = await getToken();
-      if (!token) return;
-      const ss = await fetchSubgroups(g.id, token).catch(() => []);
+      const ss = await fetchSubgroups(g.id, "").catch(() => []);
       setSubgroups((prev) => ({ ...prev, [g.id]: ss }));
     }
   }
 
   async function handleSaveConfig() {
-    const token = await getToken();
-    if (!token) return;
-    const updated = await updateSystemConfig(PROJECT_ID, configDraft, token).catch(() => null);
+    const updated = await updateSystemConfig(PROJECT_ID, configDraft, "").catch(() => null);
     if (updated) { setConfig(updated); setEditingConfig(false); }
   }
 
   async function handleAddDiscipline(name: string, code: string) {
-    const token = await getToken();
-    if (!token) return;
-    const d = await createDiscipline(PROJECT_ID, { name, code }, token).catch(() => null);
+    const d = await createDiscipline(PROJECT_ID, { name, code }, "").catch(() => null);
     if (d) setDisciplines((prev) => [...prev, d]);
   }
 
   async function handleDeleteDiscipline(id: number) {
     if (!confirm("Delete this discipline and all its groups/subgroups?")) return;
-    const token = await getToken();
-    if (!token) return;
-    await deleteDiscipline(id, token).catch(() => {});
+    await deleteDiscipline(id, "").catch(() => {});
     setDisciplines((prev) => prev.filter((d) => d.id !== id));
     setGroups((prev) => { const n = { ...prev }; delete n[id]; return n; });
     setExpandedD((s) => { const n = new Set(s); n.delete(id); return n; });
   }
 
   async function handleAddGroup(disciplineId: number, name: string, code: string) {
-    const token = await getToken();
-    if (!token) return;
-    const g = await createGroup(disciplineId, { name, code }, token).catch(() => null);
+    const g = await createGroup(disciplineId, { name, code }, "").catch(() => null);
     if (g) setGroups((prev) => ({ ...prev, [disciplineId]: [...(prev[disciplineId] || []), g] }));
   }
 
   async function handleDeleteGroup(disciplineId: number, groupId: number) {
     if (!confirm("Delete this group and all its subgroups?")) return;
-    const token = await getToken();
-    if (!token) return;
-    await deleteGroup(groupId, token).catch(() => {});
+    await deleteGroup(groupId, "").catch(() => {});
     setGroups((prev) => ({ ...prev, [disciplineId]: (prev[disciplineId] || []).filter((g) => g.id !== groupId) }));
     setSubgroups((prev) => { const n = { ...prev }; delete n[groupId]; return n; });
     setExpandedG((s) => { const n = new Set(s); n.delete(groupId); return n; });
   }
 
   async function handleAddSubgroup(groupId: number, name: string, code: string) {
-    const token = await getToken();
-    if (!token) return;
-    const s = await createSubgroup(groupId, { name, code }, token).catch(() => null);
+    const s = await createSubgroup(groupId, { name, code }, "").catch(() => null);
     if (s) setSubgroups((prev) => ({ ...prev, [groupId]: [...(prev[groupId] || []), s] }));
   }
 
   async function handleDeleteSubgroup(groupId: number, subgroupId: number) {
     if (!confirm("Delete this subgroup?")) return;
-    const token = await getToken();
-    if (!token) return;
-    await deleteSubgroup(subgroupId, token).catch(() => {});
+    await deleteSubgroup(subgroupId, "").catch(() => {});
     setSubgroups((prev) => ({ ...prev, [groupId]: (prev[groupId] || []).filter((s) => s.id !== subgroupId) }));
   }
 
@@ -187,11 +164,7 @@ export default function SystemsPage() {
   const l3 = config?.level3_name ?? "Subsystem";
 
   return (
-    <div style={{ display: "flex", height: "100vh", background: "#f8f9fa", fontFamily: "var(--font-inter, Inter, sans-serif)", overflow: "hidden" }}>
-      <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@400,0&display=swap" rel="stylesheet" />
-      <Sidebar active="systems" />
-
-      <main style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
+    <main style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
         {/* Header */}
         <div style={{ padding: "32px 40px 24px", background: "rgba(255,255,255,0.7)", backdropFilter: "blur(20px)", borderBottom: "1px solid rgba(215,195,174,0.2)", flexShrink: 0 }}>
           <span style={{ fontSize: "10px", fontWeight: 700, color: "#835500", textTransform: "uppercase", letterSpacing: "0.3em", display: "block", marginBottom: "4px" }}>Admin Settings</span>
@@ -357,8 +330,7 @@ export default function SystemsPage() {
 
           </div>
         </div>
-      </main>
-    </div>
+    </main>
   );
 }
 

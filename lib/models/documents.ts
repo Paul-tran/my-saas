@@ -8,6 +8,14 @@ export type Document = {
   status: string;
   version: string;
   uploaded_by: string;
+  site_id: number | null;
+  location_id: number | null;
+  unit_id: number | null;
+  partition_id: number | null;
+  site_name: string | null;
+  location_name: string | null;
+  unit_name: string | null;
+  partition_name: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -24,15 +32,24 @@ export type DocumentRevision = {
   created_at: string;
 };
 
-export async function fetchDocuments(projectId: number, token: string): Promise<Document[]> {
+export async function fetchDocuments(projectId: number, token?: string): Promise<Document[]> {
   return apiFetch(`/api/v1/projects/${projectId}/documents`, token);
 }
+
+export type DocumentGeoFields = {
+  site_id?: number;
+  location_id?: number;
+  unit_id?: number;
+  partition_id?: number;
+  category?: string;
+};
 
 export async function uploadDocument(
   file: File,
   projectId: number,
   uploadedBy: string,
-  token: string
+  token?: string,
+  geo: DocumentGeoFields = {}
 ): Promise<Document> {
   // Step 1: upload the file to storage
   const formData = new FormData();
@@ -50,8 +67,12 @@ export async function uploadDocument(
     body: JSON.stringify({
       project_id: projectId,
       name: file.name,
-      category: "General",
+      category: geo.category || "General",
       uploaded_by: uploadedBy,
+      site_id: geo.site_id ?? null,
+      location_id: geo.location_id ?? null,
+      unit_id: geo.unit_id ?? null,
+      partition_id: geo.partition_id ?? null,
     }),
   });
 
@@ -71,7 +92,7 @@ export async function uploadDocument(
   return doc;
 }
 
-export async function getDocumentFileUrl(fileKey: string, token: string): Promise<string> {
+export async function getDocumentFileUrl(fileKey: string, token?: string): Promise<string> {
   const res = await apiFetch<{ url: string; expires_in: number }>(
     `/api/v1/files/url?file_key=${encodeURIComponent(fileKey)}`,
     token
@@ -79,10 +100,39 @@ export async function getDocumentFileUrl(fileKey: string, token: string): Promis
   return res.url;
 }
 
-export async function fetchRevisions(documentId: number, token: string): Promise<DocumentRevision[]> {
+export async function fetchRevisions(documentId: number, token?: string): Promise<DocumentRevision[]> {
   return apiFetch(`/api/v1/documents/${documentId}/revisions`, token);
 }
 
-export async function deleteDocument(documentId: number, token: string): Promise<void> {
+export async function updateDocument(
+  documentId: number,
+  data: {
+    name?: string;
+    category?: string;
+    status?: string;
+    version?: string;
+    site_id?: number | null;
+    location_id?: number | null;
+    unit_id?: number | null;
+    partition_id?: number | null;
+  },
+  token?: string
+): Promise<Document> {
+  return apiFetch(`/api/v1/documents/${documentId}`, token, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteDocument(documentId: number, token?: string): Promise<void> {
   await apiFetch(`/api/v1/documents/${documentId}`, token, { method: "DELETE" });
+}
+
+export async function fetchMyRole(projectId: number, token?: string): Promise<string | null> {
+  try {
+    const res = await apiFetch<{ role: string | null }>(`/api/v1/projects/${projectId}/members/me`, token);
+    return res.role;
+  } catch {
+    return null;
+  }
 }

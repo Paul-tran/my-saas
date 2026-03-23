@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@clerk/nextjs/server";
+import { cookies } from "next/headers";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
@@ -9,9 +9,9 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
  * This avoids MinIO CORS issues in development.
  */
 export async function GET(req: NextRequest) {
-  const { getToken } = await auth();
-  const token = await getToken();
-  if (!token) {
+  const cookieStore = await cookies();
+  const accessToken = cookieStore.get("access_token")?.value;
+  if (!accessToken) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   // Get presigned URL from backend
   const urlRes = await fetch(
     `${API_URL}/api/v1/files/url?file_key=${encodeURIComponent(key)}`,
-    { headers: { Authorization: `Bearer ${token}` } }
+    { headers: { Cookie: `access_token=${accessToken}` } }
   );
   if (!urlRes.ok) {
     return NextResponse.json({ error: "Could not get file URL" }, { status: 502 });

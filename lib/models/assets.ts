@@ -13,6 +13,7 @@ export type Asset = {
   unit_id: number | null;
   partition_id: number | null;
   parent_id: number | null;
+  parent_tag: string | null;
   subgroup_id: number | null;
   children_count: number;
   manufacturer: string | null;
@@ -36,13 +37,16 @@ export type AssetFilters = {
   commissioning_status?: string;
   type?: string;
   parent_id?: number; // 0 = root only
+  discipline_id?: number;
+  group_id?: number;
+  subgroup_id?: number;
   page?: number;
   page_size?: number;
 };
 
 export async function fetchAssets(
   projectId: number,
-  token: string,
+  token?: string,
   filters: AssetFilters = {}
 ): Promise<Asset[]> {
   const params = new URLSearchParams();
@@ -51,24 +55,27 @@ export async function fetchAssets(
   if (filters.status) params.set("status", filters.status);
   if (filters.commissioning_status) params.set("commissioning_status", filters.commissioning_status);
   if (filters.type) params.set("type", filters.type);
+  if (filters.subgroup_id) params.set("subgroup_id", String(filters.subgroup_id));
+  else if (filters.group_id) params.set("group_id", String(filters.group_id));
+  else if (filters.discipline_id) params.set("discipline_id", String(filters.discipline_id));
   if (filters.parent_id !== undefined) params.set("parent_id", String(filters.parent_id));
   params.set("page", String(filters.page ?? 1));
   params.set("page_size", String(filters.page_size ?? 50));
   return apiFetch(`/api/v1/projects/${projectId}/assets?${params}`, token);
 }
 
-export async function fetchAsset(assetId: number, token: string): Promise<Asset> {
+export async function fetchAsset(assetId: number, token?: string): Promise<Asset> {
   return apiFetch(`/api/v1/assets/${assetId}`, token);
 }
 
-export async function fetchAssetChildren(assetId: number, token: string): Promise<Asset[]> {
+export async function fetchAssetChildren(assetId: number, token?: string): Promise<Asset[]> {
   return apiFetch(`/api/v1/assets/${assetId}/children`, token);
 }
 
 export async function createAsset(
   projectId: number,
   data: Partial<Asset> & { tag: string; site_id: number },
-  token: string
+  token?: string
 ): Promise<Asset> {
   return apiFetch(`/api/v1/projects/${projectId}/assets`, token, {
     method: "POST",
@@ -79,7 +86,7 @@ export async function createAsset(
 export async function updateAsset(
   assetId: number,
   data: Partial<Asset>,
-  token: string
+  token?: string
 ): Promise<Asset> {
   return apiFetch(`/api/v1/assets/${assetId}`, token, {
     method: "PATCH",
@@ -87,7 +94,7 @@ export async function updateAsset(
   });
 }
 
-export async function deleteAsset(assetId: number, token: string): Promise<void> {
+export async function deleteAsset(assetId: number, token?: string): Promise<void> {
   return apiFetch(`/api/v1/assets/${assetId}`, token, { method: "DELETE" });
 }
 
@@ -102,6 +109,6 @@ export type AssetDrawing = {
   y_percent: number;
 };
 
-export async function fetchAssetDrawings(assetId: number, token: string): Promise<AssetDrawing[]> {
+export async function fetchAssetDrawings(assetId: number, token?: string): Promise<AssetDrawing[]> {
   return apiFetch(`/api/v1/assets/${assetId}/drawings`, token);
 }
