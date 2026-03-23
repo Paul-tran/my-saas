@@ -22,10 +22,11 @@ const KPI_STYLE: Record<string, { bg: string; color: string; icon: string }> = {
 };
 
 export default function Commissioning() {
-  const { records, loading, error, handleAddRecord } = useCommissioning();
+  const { records, loading, error, handleAddRecord, handleDeleteRecord } = useCommissioning();
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [assignedTo, setAssignedTo] = useState("");
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -101,8 +102,8 @@ export default function Commissioning() {
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr style={{ background: "#f3f4f5" }}>
-                    {["Name", "Assigned To", "Status"].map((h) => (
-                      <th key={h} style={{ padding: "12px 24px", fontSize: "10px", color: "#524534", fontWeight: 700, textAlign: "left", textTransform: "uppercase", letterSpacing: "0.1em" }}>{h}</th>
+                    {["Name", "Assigned To", "Status", ""].map((h, i) => (
+                      <th key={i} style={{ padding: "12px 24px", fontSize: "10px", color: "#524534", fontWeight: 700, textAlign: "left", textTransform: "uppercase", letterSpacing: "0.1em" }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -120,6 +121,15 @@ export default function Commissioning() {
                             {STATUS_LABELS[record.overall_status] ?? record.overall_status}
                           </span>
                         </td>
+                        <td style={{ padding: "16px 24px", textAlign: "right" }}>
+                          <button
+                            onClick={() => setConfirmDeleteId(record.id)}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: "#dc2626", padding: "4px 8px", borderRadius: "6px", display: "inline-flex", alignItems: "center" }}
+                            title="Delete record"
+                          >
+                            <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>delete</span>
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -129,6 +139,29 @@ export default function Commissioning() {
           )}
         </div>
     </main>
+
+    {/* Delete confirmation modal */}
+    {confirmDeleteId !== null && (
+      <div style={{ position: "fixed", inset: 0, background: "rgba(25,28,29,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 50 }}>
+        <div style={{ background: "#fff", borderRadius: "16px", padding: "32px", width: "400px", boxShadow: "0 40px 80px rgba(25,28,29,0.15)" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px", marginBottom: "16px" }}>
+            <span className="material-symbols-outlined" style={{ fontSize: "28px", color: "#dc2626" }}>warning</span>
+            <h2 style={{ color: "#191c1d", margin: 0, fontFamily: "var(--font-manrope, Manrope, sans-serif)", fontSize: "18px", fontWeight: 700 }}>Delete Record</h2>
+          </div>
+          <p style={{ color: "#524534", fontSize: "13px", marginBottom: "24px" }}>This will permanently delete the commissioning record. This action cannot be undone.</p>
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button onClick={() => setConfirmDeleteId(null)}
+              style={{ flex: 1, background: "none", border: "1px solid rgba(215,195,174,0.4)", color: "#857462", borderRadius: "8px", padding: "10px", cursor: "pointer", fontSize: "13px" }}>
+              Cancel
+            </button>
+            <button onClick={async () => { await handleDeleteRecord(confirmDeleteId); setConfirmDeleteId(null); }}
+              style={{ flex: 1, background: "#dc2626", border: "none", color: "#fff", borderRadius: "8px", padding: "10px", cursor: "pointer", fontSize: "13px", fontWeight: 700 }}>
+              Delete
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
 
     {/* Add record modal */}
       {showForm && (

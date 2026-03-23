@@ -49,3 +49,10 @@ export async function createCommissioning(
     }),
   });
 }
+
+export async function deleteCommissioning(
+  recordId: number,
+  token?: string
+): Promise<void> {
+  await apiFetch(`/api/v1/commissioning/${recordId}`, token, { method: "DELETE" });
+}

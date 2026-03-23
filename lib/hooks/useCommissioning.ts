@@ -5,6 +5,7 @@ import {
   CommissioningRecord,
   fetchCommissioning,
   createCommissioning,
+  deleteCommissioning,
 } from "../models/commissioning";
 
 const PROJECT_ID = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
@@ -39,5 +40,14 @@ export function useCommissioning() {
     }
   }
 
-  return { records, loading, error, handleAddRecord };
+  async function handleDeleteRecord(id: number) {
+    try {
+      await deleteCommissioning(id, "");
+      setRecords((prev) => prev.filter((r) => r.id !== id));
+    } catch (e: any) {
+      setError(e.message);
+    }
+  }
+
+  return { records, loading, error, handleAddRecord, handleDeleteRecord };
 }
