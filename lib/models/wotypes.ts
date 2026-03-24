@@ -1,12 +1,22 @@
 import { apiFetch } from "../api";
 
+export const GEO_LEVELS = ["site", "location", "unit", "partition"] as const;
+export type GeoLevel = typeof GEO_LEVELS[number];
+
+export const GEO_LEVEL_LABEL: Record<GeoLevel, string> = {
+  site: "Site",
+  location: "Location",
+  unit: "Unit",
+  partition: "Partition",
+};
+
 export type WOType = {
   id: number;
   project_id: number;
   name: string;
   category: "corrective" | "preventive" | "inspection" | "operations";
   asset_required: boolean;
-  geography_required: boolean;
+  geography_levels_required: GeoLevel[];
   is_active: boolean;
   created_at: string;
 };
@@ -15,7 +25,7 @@ export type WOTypeCreate = {
   name: string;
   category: WOType["category"];
   asset_required: boolean;
-  geography_required: boolean;
+  geography_levels_required: GeoLevel[];
 };
 
 export type WOTypeUpdate = Partial<WOTypeCreate & { is_active: boolean }>;

@@ -184,7 +184,7 @@ export default function NewWorkOrderPage() {
                           <span style={{ color: "#191c1d", fontWeight: 600, fontSize: "14px" }}>{t.name}</span>
                           <div style={{ display: "flex", gap: "10px", fontSize: "12px", color: "#857462" }}>
                             {t.asset_required && <span>Asset required</span>}
-                            {t.geography_required && <span>Site required</span>}
+                            {t.geography_levels_required?.length > 0 && <span>Requires: {t.geography_levels_required.join(" → ")}</span>}
                           </div>
                         </div>
                         <p style={{ color: "#524534", fontSize: "12px", margin: "4px 0 0" }}>

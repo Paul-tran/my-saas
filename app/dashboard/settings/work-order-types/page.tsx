@@ -3,7 +3,7 @@
 import { useState } from "react";
 import ErrorBanner from "../../../components/ErrorBanner";
 import { useWOTypes } from "../../../../lib/hooks/useWOTypes";
-import { WOType, WOTypeCreate, CATEGORY_LABEL, CATEGORY_COLOR } from "../../../../lib/models/wotypes";
+import { WOType, WOTypeCreate, CATEGORY_LABEL, CATEGORY_COLOR, GEO_LEVELS, GEO_LEVEL_LABEL, GeoLevel } from "../../../../lib/models/wotypes";
 
 const CATEGORIES: WOType["category"][] = ["corrective", "preventive", "inspection", "operations"];
 
@@ -12,17 +12,17 @@ export default function WOTypesSettingsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<WOTypeCreate>({
-    name: "", category: "corrective", asset_required: false, geography_required: true,
+    name: "", category: "corrective", asset_required: false, geography_levels_required: [],
   });
 
   function openCreate() {
-    setForm({ name: "", category: "corrective", asset_required: false, geography_required: true });
+    setForm({ name: "", category: "corrective", asset_required: false, geography_levels_required: [] });
     setEditingId(null);
     setShowForm(true);
   }
 
   function openEdit(wt: WOType) {
-    setForm({ name: wt.name, category: wt.category, asset_required: wt.asset_required, geography_required: wt.geography_required });
+    setForm({ name: wt.name, category: wt.category, asset_required: wt.asset_required, geography_levels_required: wt.geography_levels_required });
     setEditingId(wt.id);
     setShowForm(true);
   }
@@ -41,8 +41,22 @@ export default function WOTypesSettingsPage() {
     setForm((f) => ({
       ...f, category: cat,
       asset_required: cat === "corrective" || cat === "preventive",
-      geography_required: true,
     }));
+  }
+
+  function toggleGeoLevel(level: GeoLevel) {
+    const hierarchy: GeoLevel[] = ["site", "location", "unit", "partition"];
+    const idx = hierarchy.indexOf(level);
+    setForm((f) => {
+      const has = f.geography_levels_required.includes(level);
+      if (has) {
+        // Deselecting: remove this level and everything below it
+        return { ...f, geography_levels_required: hierarchy.slice(0, idx) };
+      } else {
+        // Selecting: include this level and all parents above it
+        return { ...f, geography_levels_required: hierarchy.slice(0, idx + 1) };
+      }
+    });
   }
 
   return (
@@ -95,7 +109,10 @@ export default function WOTypesSettingsPage() {
                     <div style={{ display: "flex", gap: "16px", marginTop: "4px" }}>
                       <span style={{ fontSize: "12px", color: CATEGORY_COLOR[wt.category], fontWeight: 600 }}>{CATEGORY_LABEL[wt.category]}</span>
                       <span style={{ fontSize: "12px", color: "#857462" }}>{wt.asset_required ? "✓ Asset required" : "○ Asset optional"}</span>
-                      <span style={{ fontSize: "12px", color: "#857462" }}>{wt.geography_required ? "✓ Site required" : "○ Site optional"}</span>
+                      {wt.geography_levels_required.length > 0
+                        ? <span style={{ fontSize: "12px", color: "#857462" }}>✓ Requires: {wt.geography_levels_required.join(" → ")}</span>
+                        : <span style={{ fontSize: "12px", color: "#857462" }}>○ Geography optional</span>
+                      }
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: "8px" }}>
@@ -158,7 +175,36 @@ export default function WOTypesSettingsPage() {
 
               <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
                 <Toggle label="Asset required" hint="User must select an asset when creating this work order type" value={form.asset_required} onChange={(v) => setForm({ ...form, asset_required: v })} />
-                <Toggle label="Site required" hint="User must select a site when creating this work order type" value={form.geography_required} onChange={(v) => setForm({ ...form, geography_required: v })} />
+                <div style={{ background: "#f8f9fa", border: "1px solid rgba(215,195,174,0.2)", borderRadius: "8px", padding: "12px 14px" }}>
+                  <div style={{ fontSize: "13px", color: "#191c1d", fontWeight: 500, marginBottom: "2px" }}>Geography levels required</div>
+                  <div style={{ fontSize: "12px", color: "#857462", marginBottom: "10px" }}>Select which location levels the user must specify.</div>
+                  <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                    {GEO_LEVELS.map((level) => {
+                      const checked = form.geography_levels_required.includes(level);
+                      return (
+                        <button
+                          key={level}
+                          type="button"
+                          onClick={() => toggleGeoLevel(level)}
+                          style={{
+                            padding: "5px 14px", borderRadius: "20px", fontSize: "12px", fontWeight: 600, cursor: "pointer", border: "1.5px solid",
+                            background: checked ? "#835500" : "transparent",
+                            borderColor: checked ? "#835500" : "#d7c3ae",
+                            color: checked ? "#fff" : "#857462",
+                            transition: "all 0.15s",
+                          }}
+                        >
+                          {GEO_LEVEL_LABEL[level]}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {form.geography_levels_required.length > 0 && (
+                    <div style={{ fontSize: "11px", color: "#835500", marginTop: "8px" }}>
+                      Required path: {form.geography_levels_required.join(" → ")}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div style={{ display: "flex", gap: "10px", marginTop: "8px" }}>

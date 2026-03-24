@@ -11,6 +11,7 @@ const MAIN_NAV = [
   { href: "/dashboard/assets", label: "Assets", icon: "construction" },
   { href: "/dashboard/work-orders", label: "Work Orders", icon: "assignment" },
   { href: "/dashboard/commissioning", label: "Commissioning", icon: "verified" },
+  { href: "/dashboard/preventive-maintenance", label: "Preventive Maintenance", icon: "event_repeat" },
 ];
 
 const BOTTOM_NAV = [
