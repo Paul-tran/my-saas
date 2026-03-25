@@ -62,7 +62,7 @@ export default function NewWorkOrderPage() {
   useEffect(() => {
     (async () => {
       try {
-        const data = await apiFetch<GeoOption[]>(`/api/v1/projects/${PROJECT_ID}/sites`, "");
+        const data = await apiFetch<GeoOption[]>(`/api/v1/geography/sites`, "");
         setSites(data);
       } catch { }
     })();
@@ -74,7 +74,7 @@ export default function NewWorkOrderPage() {
     (async () => {
       try {
         const [locs, assetList] = await Promise.all([
-          apiFetch<GeoOption[]>(`/api/v1/sites/${siteId}/locations`, ""),
+          apiFetch<GeoOption[]>(`/api/v1/geography/sites/${siteId}/locations`, ""),
           apiFetch<GeoOption[]>(`/api/v1/projects/${PROJECT_ID}/assets?site_id=${siteId}`, ""),
         ]);
         setLocations(locs);
@@ -88,7 +88,7 @@ export default function NewWorkOrderPage() {
     if (!locationId) return;
     (async () => {
       try {
-        const data = await apiFetch<GeoOption[]>(`/api/v1/locations/${locationId}/units`, "");
+        const data = await apiFetch<GeoOption[]>(`/api/v1/geography/locations/${locationId}/units`, "");
         setUnits(data);
       } catch { }
     })();
@@ -99,7 +99,7 @@ export default function NewWorkOrderPage() {
     if (!unitId) return;
     (async () => {
       try {
-        const data = await apiFetch<GeoOption[]>(`/api/v1/units/${unitId}/partitions`, "");
+        const data = await apiFetch<GeoOption[]>(`/api/v1/geography/units/${unitId}/partitions`, "");
         setPartitions(data);
       } catch { }
     })();
@@ -254,11 +254,11 @@ export default function NewWorkOrderPage() {
               </TwoCol>
             </Section>
 
-            <Section title={`Location${selectedType?.geography_required ? " *" : ""}`}
-              hint={selectedType?.geography_required ? "A site is required for this work order type." : "Optionally specify where this work is taking place."}>
+            <Section title={`Location${selectedType?.geography_levels_required?.length ? " *" : ""}`}
+              hint={selectedType?.geography_levels_required?.length ? "Geography is required for this work order type." : "Optionally specify where this work is taking place."}>
               <TwoCol>
-                <Field label={`Site${selectedType?.geography_required ? " *" : ""}`}>
-                  <select value={siteId} onChange={(e) => setSiteId(e.target.value)} required={selectedType?.geography_required}>
+                <Field label={`Site${selectedType?.geography_levels_required?.length ? " *" : ""}`}>
+                  <select value={siteId} onChange={(e) => setSiteId(e.target.value)} required={!!selectedType?.geography_levels_required?.length}>
                     <option value="">— Select site —</option>
                     {sites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
                   </select>

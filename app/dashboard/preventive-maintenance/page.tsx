@@ -1,12 +1,17 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import {
   PMSchedule, PMActivity, PMHistoryEntry, PMFrequency,
-  fetchPMSchedules, createPMSchedule, updatePMSchedule, deletePMSchedule,
-  addPMActivity, updatePMActivity, deletePMActivity,
+  fetchPMSchedules, createPMSchedule, deletePMSchedule,
+  addPMActivity, deletePMActivity,
+  addScheduleAsset, removeScheduleAsset,
   generateWorkOrders, fetchScheduleHistory,
 } from "@/lib/models/pm-schedules";
+import { Asset, fetchAssets } from "@/lib/models/assets";
+import { Site, Location, GeoUnit, Partition, fetchSites, fetchLocations, fetchUnits, fetchPartitions } from "@/lib/models/geography";
+
+const DEFAULT_PROJECT_ID = parseInt(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || "1");
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -43,6 +48,62 @@ const STATUS_STYLES = {
   paused: { bg: "#f3f4f5", color: "#524534", label: "Paused" },
   overdue: { bg: "#ffdad6", color: "#93000a", label: "Overdue" },
 };
+
+// ── Projected dates helper ─────────────────────────────────────────────────────
+
+function advanceDate(d: Date, frequency: PMFrequency | string, intervalDays: number | null): Date {
+  const n = new Date(d);
+  if (frequency === "weekly") n.setDate(n.getDate() + 7);
+  else if (frequency === "monthly") n.setMonth(n.getMonth() + 1);
+  else if (frequency === "quarterly") n.setMonth(n.getMonth() + 3);
+  else if (frequency === "annually") n.setFullYear(n.getFullYear() + 1);
+  else if (frequency === "custom_days" && intervalDays) n.setDate(n.getDate() + intervalDays);
+  else n.setDate(n.getDate() + 30);
+  return n;
+}
+
+function regressDate(d: Date, frequency: PMFrequency | string, intervalDays: number | null): Date {
+  const n = new Date(d);
+  if (frequency === "weekly") n.setDate(n.getDate() - 7);
+  else if (frequency === "monthly") n.setMonth(n.getMonth() - 1);
+  else if (frequency === "quarterly") n.setMonth(n.getMonth() - 3);
+  else if (frequency === "annually") n.setFullYear(n.getFullYear() - 1);
+  else if (frequency === "custom_days" && intervalDays) n.setDate(n.getDate() - intervalDays);
+  else n.setDate(n.getDate() - 30);
+  return n;
+}
+
+function projectDatesForMonth(activity: PMActivity, scheduleStartDate: string): string[] {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = today.getMonth();
+  const monthStart = new Date(year, month, 1);
+  const monthEnd = new Date(year, month + 1, 0);
+
+  const anchorStr = activity.next_due_date || scheduleStartDate;
+  const anchor = new Date(anchorStr + "T00:00:00");
+  const endDate = activity.end_date ? new Date(activity.end_date + "T00:00:00") : null;
+
+  const result = new Set<string>();
+
+  // Walk backward from anchor into the current month
+  let d = new Date(anchor);
+  for (let i = 0; i < 60; i++) {
+    if (d < monthStart) break;
+    if (d <= monthEnd) result.add(d.toISOString().split("T")[0]);
+    d = regressDate(d, activity.frequency, activity.interval_days);
+  }
+
+  // Walk forward from anchor into the current month
+  d = advanceDate(anchor, activity.frequency, activity.interval_days);
+  for (let i = 0; i < 60; i++) {
+    if (d > monthEnd) break;
+    if (d >= monthStart) result.add(d.toISOString().split("T")[0]);
+    d = advanceDate(d, activity.frequency, activity.interval_days);
+  }
+
+  return Array.from(result).filter((s) => !endDate || new Date(s + "T00:00:00") <= endDate);
+}
 
 // ── Mini Calendar ─────────────────────────────────────────────────────────────
 
@@ -193,6 +254,347 @@ function ActivityFormRow({
   );
 }
 
+// ── Asset Picker Modal ────────────────────────────────────────────────────────
+
+function FilterSelect({
+  value, onChange, placeholder, options, disabled,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  options: { value: string; label: string }[];
+  disabled?: boolean;
+}) {
+  const selectStyle: React.CSSProperties = {
+    width: "100%",
+    padding: "6px 10px",
+    borderRadius: "8px",
+    border: "1.5px solid",
+    borderColor: value ? "#835500" : "#e8ddd3",
+    background: value ? "rgba(131,85,0,0.04)" : "#f8f9fa",
+    color: value ? "#191c1d" : "#857462",
+    fontSize: "0.8rem",
+    fontWeight: value ? 600 : 400,
+    outline: "none",
+    cursor: disabled ? "not-allowed" : "pointer",
+    opacity: disabled ? 0.45 : 1,
+  };
+  return (
+    <select value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} style={selectStyle}>
+      <option value="">{placeholder}</option>
+      {options.map((o) => (
+        <option key={o.value} value={o.value}>{o.label}</option>
+      ))}
+    </select>
+  );
+}
+
+function AssetPickerModal({
+  assets,
+  initialSelection,
+  onConfirm,
+  onClose,
+  title = "Select Assets",
+}: {
+  assets: Asset[];
+  initialSelection: number[];
+  onConfirm: (ids: number[]) => void;
+  onClose: () => void;
+  title?: string;
+}) {
+  const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<number[]>(initialSelection);
+
+  // Geography filters
+  const [sites, setSites] = useState<Site[]>([]);
+  const [locations, setLocations] = useState<Location[]>([]);
+  const [units, setUnits] = useState<GeoUnit[]>([]);
+  const [partitions, setPartitions] = useState<Partition[]>([]);
+  const [siteId, setSiteId] = useState("");
+  const [locationId, setLocationId] = useState("");
+  const [unitId, setUnitId] = useState("");
+  const [partitionId, setPartitionId] = useState("");
+
+  // Asset hierarchy filter — derived from the passed asset list
+  const [parentId, setParentId] = useState("");
+  const parentOptions = Array.from(
+    new Map(
+      assets
+        .filter((a) => a.parent_id !== null && a.parent_tag !== null)
+        .map((a) => [a.parent_id, a.parent_tag!])
+    ).entries()
+  ).map(([id, tag]) => ({ value: String(id), label: tag }));
+
+  // Fetch sites on mount
+  useEffect(() => {
+    fetchSites().then(setSites).catch(() => {});
+  }, []);
+
+  // Cascade: site → locations
+  useEffect(() => {
+    setLocationId("");
+    setUnitId("");
+    setPartitionId("");
+    setLocations([]);
+    setUnits([]);
+    setPartitions([]);
+    if (siteId) fetchLocations(parseInt(siteId)).then(setLocations).catch(() => {});
+  }, [siteId]);
+
+  // Cascade: location → units
+  useEffect(() => {
+    setUnitId("");
+    setPartitionId("");
+    setUnits([]);
+    setPartitions([]);
+    if (locationId) fetchUnits(parseInt(locationId)).then(setUnits).catch(() => {});
+  }, [locationId]);
+
+  // Cascade: unit → partitions
+  useEffect(() => {
+    setPartitionId("");
+    setPartitions([]);
+    if (unitId) fetchPartitions(parseInt(unitId)).then(setPartitions).catch(() => {});
+  }, [unitId]);
+
+  const hasFilters = !!(search || siteId || locationId || unitId || partitionId || parentId);
+
+  function clearFilters() {
+    setSearch("");
+    setSiteId("");
+    setLocationId("");
+    setUnitId("");
+    setPartitionId("");
+    setParentId("");
+  }
+
+  const filtered = assets.filter((a) => {
+    if (search) {
+      const q = search.toLowerCase();
+      const matches =
+        a.tag.toLowerCase().includes(q) ||
+        (a.name ?? "").toLowerCase().includes(q) ||
+        (a.type ?? "").toLowerCase().includes(q);
+      if (!matches) return false;
+    }
+    if (siteId && a.site_id !== parseInt(siteId)) return false;
+    if (locationId && a.location_id !== parseInt(locationId)) return false;
+    if (unitId && a.unit_id !== parseInt(unitId)) return false;
+    if (partitionId && a.partition_id !== parseInt(partitionId)) return false;
+    if (parentId && a.parent_id !== parseInt(parentId)) return false;
+    return true;
+  });
+
+  function toggle(id: number) {
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  }
+
+  function toggleAll() {
+    setSelected((prev) => {
+      const ids = filtered.map((a) => a.id);
+      return ids.every((id) => prev.includes(id))
+        ? prev.filter((id) => !ids.includes(id))
+        : [...new Set([...prev, ...ids])];
+    });
+  }
+
+  const allFilteredSelected = filtered.length > 0 && filtered.every((a) => selected.includes(a.id));
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ background: "rgba(25,28,29,0.4)" }}>
+      <div
+        className="w-full max-w-xl flex flex-col rounded-2xl overflow-hidden"
+        style={{ background: "#fff", boxShadow: "0 24px 64px rgba(25,28,29,0.18)", maxHeight: "85vh" }}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: "1px solid rgba(215,195,174,0.2)" }}>
+          <div>
+            <h2 className="font-bold" style={{ fontFamily: "var(--font-manrope)", fontSize: "1.1rem", color: "#191c1d" }}>{title}</h2>
+            {selected.length > 0 && (
+              <p className="text-xs mt-0.5" style={{ color: "#835500" }}>{selected.length} selected</p>
+            )}
+          </div>
+          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-black/5">
+            <span className="material-symbols-outlined" style={{ fontSize: "20px", color: "#857462" }}>close</span>
+          </button>
+        </div>
+
+        {/* Search + filters */}
+        <div className="px-6 py-4 space-y-3" style={{ borderBottom: "1px solid rgba(215,195,174,0.15)", background: "#fafaf9" }}>
+          {/* Search bar */}
+          <div className="flex items-center gap-2 px-3 py-2 rounded-xl" style={{ background: "#f3f4f5" }}>
+            <span className="material-symbols-outlined" style={{ fontSize: "18px", color: "#857462" }}>search</span>
+            <input
+              autoFocus
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by tag, name, or type…"
+              className="flex-1 bg-transparent outline-none text-sm"
+              style={{ color: "#191c1d" }}
+            />
+            {search && (
+              <button onClick={() => setSearch("")}>
+                <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "#857462" }}>close</span>
+              </button>
+            )}
+          </div>
+
+          {/* Geography row */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: "#857462" }}>Geography</p>
+            <div className="grid grid-cols-4 gap-2">
+              <FilterSelect
+                value={siteId}
+                onChange={setSiteId}
+                placeholder="Site"
+                options={sites.map((s) => ({ value: String(s.id), label: s.name }))}
+              />
+              <FilterSelect
+                value={locationId}
+                onChange={setLocationId}
+                placeholder="Location"
+                options={locations.map((l) => ({ value: String(l.id), label: l.name }))}
+                disabled={!siteId}
+              />
+              <FilterSelect
+                value={unitId}
+                onChange={setUnitId}
+                placeholder="Unit"
+                options={units.map((u) => ({ value: String(u.id), label: u.name }))}
+                disabled={!locationId}
+              />
+              <FilterSelect
+                value={partitionId}
+                onChange={setPartitionId}
+                placeholder="Partition"
+                options={partitions.map((p) => ({ value: String(p.id), label: p.name }))}
+                disabled={!unitId}
+              />
+            </div>
+          </div>
+
+          {/* Asset hierarchy row */}
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide mb-1.5" style={{ color: "#857462" }}>Asset Hierarchy</p>
+            <div className="grid grid-cols-2 gap-2">
+              <FilterSelect
+                value={parentId}
+                onChange={setParentId}
+                placeholder="Parent asset"
+                options={parentOptions}
+              />
+              <div /> {/* placeholder for future sub-level */}
+            </div>
+          </div>
+
+          {/* Clear filters */}
+          {hasFilters && (
+            <button
+              onClick={clearFilters}
+              className="flex items-center gap-1 text-xs font-semibold"
+              style={{ color: "#835500" }}
+            >
+              <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>filter_alt_off</span>
+              Clear all filters
+            </button>
+          )}
+        </div>
+
+        {/* Select-all bar */}
+        {filtered.length > 0 && (
+          <div
+            className="flex items-center gap-3 px-6 py-2 cursor-pointer"
+            style={{ borderBottom: "1px solid rgba(215,195,174,0.1)", background: "#fafaf9" }}
+            onClick={toggleAll}
+          >
+            <div
+              className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+              style={{ border: `2px solid ${allFilteredSelected ? "#835500" : "#d7c3ae"}`, background: allFilteredSelected ? "#835500" : "transparent" }}
+            >
+              {allFilteredSelected && <span className="material-symbols-outlined" style={{ fontSize: "11px", color: "#fff" }}>check</span>}
+            </div>
+            <span className="text-xs font-semibold" style={{ color: "#524534" }}>
+              {allFilteredSelected ? "Deselect all" : `Select all${hasFilters ? " matching" : ""}`}
+            </span>
+            <span className="text-xs ml-auto" style={{ color: "#857462" }}>{filtered.length} asset{filtered.length !== 1 ? "s" : ""}</span>
+          </div>
+        )}
+
+        {/* Asset list */}
+        <div className="flex-1 overflow-y-auto">
+          {filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16">
+              <span className="material-symbols-outlined" style={{ fontSize: "36px", color: "#d7c3ae", display: "block", marginBottom: "8px" }}>search_off</span>
+              <p className="text-sm" style={{ color: "#857462" }}>No assets match the current filters.</p>
+            </div>
+          ) : (
+            filtered.map((a) => {
+              const isSelected = selected.includes(a.id);
+              return (
+                <div
+                  key={a.id}
+                  onClick={() => toggle(a.id)}
+                  className="flex items-center gap-4 px-6 py-3 cursor-pointer transition-colors"
+                  style={{
+                    background: isSelected ? "rgba(131,85,0,0.04)" : "transparent",
+                    borderBottom: "1px solid rgba(215,195,174,0.1)",
+                  }}
+                >
+                  <div
+                    className="w-4 h-4 rounded flex items-center justify-center flex-shrink-0"
+                    style={{ border: `2px solid ${isSelected ? "#835500" : "#d7c3ae"}`, background: isSelected ? "#835500" : "transparent" }}
+                  >
+                    {isSelected && <span className="material-symbols-outlined" style={{ fontSize: "11px", color: "#fff" }}>check</span>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-sm font-semibold" style={{ color: "#191c1d" }}>{a.tag}</span>
+                      {a.type && (
+                        <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: "rgba(131,85,0,0.08)", color: "#835500" }}>{a.type}</span>
+                      )}
+                      {a.parent_tag && (
+                        <span className="text-xs" style={{ color: "#857462" }}>↳ {a.parent_tag}</span>
+                      )}
+                    </div>
+                    {a.name && <p className="text-xs mt-0.5 truncate" style={{ color: "#857462" }}>{a.name}</p>}
+                  </div>
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-full flex-shrink-0"
+                    style={{
+                      background: a.status === "active" ? "#dcfce7" : "#f3f4f5",
+                      color: a.status === "active" ? "#15803d" : "#524534",
+                    }}
+                  >
+                    {a.status}
+                  </span>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-end gap-3 px-6 py-4" style={{ borderTop: "1px solid rgba(215,195,174,0.2)" }}>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-sm rounded-xl font-medium"
+            style={{ border: "1.5px solid #d7c3ae", color: "#524534" }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={() => onConfirm(selected)}
+            className="px-5 py-2 text-sm font-semibold text-white rounded-xl"
+            style={{ background: "linear-gradient(135deg,#835500,#f5a623)" }}
+          >
+            Confirm{selected.length > 0 ? ` (${selected.length})` : ""}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── New Schedule Drawer ───────────────────────────────────────────────────────
 
 function NewScheduleDrawer({
@@ -207,9 +609,16 @@ function NewScheduleDrawer({
   const [startDate, setStartDate] = useState(new Date().toISOString().split("T")[0]);
   const [assignedTo, setAssignedTo] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [assetIds, setAssetIds] = useState<number[]>([]);
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [showAssetModal, setShowAssetModal] = useState(false);
   const [activities, setActivities] = useState<ActivityDraft[]>([emptyDraft()]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetchAssets(DEFAULT_PROJECT_ID).then(setAssets).catch(() => {});
+  }, []);
 
   const inputStyle = {
     borderBottom: "1.5px solid #d7c3ae",
@@ -228,6 +637,7 @@ function NewScheduleDrawer({
     try {
       const result = await createPMSchedule({
         name: name.trim(),
+        asset_ids: assetIds,
         lead_days: parseInt(leadDays) || 7,
         start_date: startDate,
         assigned_to: assignedTo.trim() || null,
@@ -272,6 +682,38 @@ function NewScheduleDrawer({
           <div>
             <label className="text-xs font-semibold uppercase tracking-wide" style={{ color: "#857462" }}>Schedule Name *</label>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Monthly HVAC Inspection" style={inputStyle} />
+          </div>
+          <div>
+            <label className="text-xs font-semibold uppercase tracking-wide mb-2 block" style={{ color: "#857462" }}>Assets</label>
+            <button
+              type="button"
+              onClick={() => setShowAssetModal(true)}
+              className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm transition-colors"
+              style={{ border: "1.5px solid #d7c3ae", color: assetIds.length ? "#191c1d" : "#857462", background: "transparent" }}
+            >
+              <span>{assetIds.length ? `${assetIds.length} asset${assetIds.length !== 1 ? "s" : ""} selected` : "Select assets…"}</span>
+              <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "#857462" }}>hardware</span>
+            </button>
+            {assetIds.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {assets.filter((a) => assetIds.includes(a.id)).map((a) => (
+                  <span key={a.id} className="flex items-center gap-1 text-xs px-2.5 py-1 rounded-full font-medium" style={{ background: "rgba(131,85,0,0.08)", color: "#835500" }}>
+                    {a.tag}
+                    <button onClick={() => setAssetIds((prev) => prev.filter((id) => id !== a.id))}>
+                      <span className="material-symbols-outlined" style={{ fontSize: "12px" }}>close</span>
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+            {showAssetModal && (
+              <AssetPickerModal
+                assets={assets}
+                initialSelection={assetIds}
+                onConfirm={(ids) => { setAssetIds(ids); setShowAssetModal(false); }}
+                onClose={() => setShowAssetModal(false)}
+              />
+            )}
           </div>
           <div className="grid grid-cols-2 gap-4">
             <div>
@@ -371,6 +813,14 @@ export default function PreventiveMaintenancePage() {
   const [newActivity, setNewActivity] = useState<ActivityDraft>(emptyDraft());
   const [savingActivity, setSavingActivity] = useState(false);
 
+  // Asset management
+  const [allAssets, setAllAssets] = useState<Asset[]>([]);
+  const [showAssetPicker, setShowAssetPicker] = useState(false);
+
+  useEffect(() => {
+    fetchAssets(DEFAULT_PROJECT_ID).then(setAllAssets).catch(() => {});
+  }, []);
+
   useEffect(() => {
     fetchPMSchedules()
       .then((data) => {
@@ -442,14 +892,28 @@ export default function PreventiveMaintenancePage() {
 
   async function handleDeleteSchedule(id: number) {
     await deletePMSchedule(id);
-    setSchedules((prev) => prev.filter((s) => s.id !== id));
-    setSelectedId((prev) => {
-      const remaining = schedules.filter((s) => s.id !== id);
-      return remaining.length ? remaining[0].id : null;
-    });
+    const remaining = schedules.filter((s) => s.id !== id);
+    setSchedules(remaining);
+    setSelectedId(remaining.length ? remaining[0].id : null);
   }
 
-  const allDueDates = (selected?.activities ?? []).map((a) => a.next_due_date).filter(Boolean) as string[];
+  async function handleAddAsset(assetId: number) {
+    if (!selectedId) return;
+    const updated = await addScheduleAsset(selectedId, assetId);
+    setSchedules((prev) => prev.map((s) => s.id === selectedId ? { ...s, assets: updated.assets } : s));
+  }
+
+  async function handleRemoveAsset(assetId: number) {
+    if (!selectedId) return;
+    await removeScheduleAsset(selectedId, assetId);
+    setSchedules((prev) =>
+      prev.map((s) => s.id === selectedId ? { ...s, assets: s.assets.filter((a) => a.id !== assetId) } : s)
+    );
+  }
+
+  const allDueDates = selected
+    ? (selected.activities ?? []).flatMap((a) => projectDatesForMonth(a, selected.start_date))
+    : [];
 
   if (loading) {
     return (
@@ -496,7 +960,7 @@ export default function PreventiveMaintenancePage() {
             const st = STATUS_STYLES[status];
             return (
               <div
-                key={s.id}
+                key={`sched-${s.id}`}
                 onClick={() => { setSelectedId(s.id); setActiveTab("overview"); }}
                 className="cursor-pointer rounded-xl px-4 py-3 mb-2 group transition-colors"
                 style={{
@@ -620,24 +1084,73 @@ export default function PreventiveMaintenancePage() {
 
             {/* ── Overview Tab ── */}
             {activeTab === "overview" && (
-              <div className="grid grid-cols-2 gap-6">
-                <MiniCalendar dueDates={allDueDates} />
-                <div className="bg-white rounded-2xl p-5" style={{ boxShadow: "0 4px 20px rgba(25,28,29,0.05)" }}>
-                  <p className="text-sm font-bold mb-4" style={{ fontFamily: "var(--font-manrope)", color: "#191c1d" }}>Schedule Details</p>
-                  {[
-                    { label: "Assigned To", value: selected.assigned_to ?? "—", icon: "person" },
-                    { label: "Start Date", value: fmtDate(selected.start_date), icon: "calendar_today" },
-                    { label: "Lead Days", value: `${selected.lead_days} days before due date`, icon: "schedule" },
-                    { label: "Status", value: selected.is_active ? "Active" : "Paused", icon: "toggle_on" },
-                  ].map(({ label, value, icon }) => (
-                    <div key={label} className="flex items-center gap-3 py-2.5" style={{ borderBottom: "1px solid rgba(215,195,174,0.1)" }}>
-                      <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "#857462" }}>{icon}</span>
-                      <div>
-                        <p className="text-xs" style={{ color: "#857462" }}>{label}</p>
-                        <p className="text-sm font-medium" style={{ color: "#191c1d" }}>{value}</p>
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-6">
+                  <MiniCalendar dueDates={allDueDates} />
+                  <div className="bg-white rounded-2xl p-5" style={{ boxShadow: "0 4px 20px rgba(25,28,29,0.05)" }}>
+                    <p className="text-sm font-bold mb-4" style={{ fontFamily: "var(--font-manrope)", color: "#191c1d" }}>Schedule Details</p>
+                    {[
+                      { label: "Assigned To", value: selected.assigned_to ?? "—", icon: "person" },
+                      { label: "Start Date", value: fmtDate(selected.start_date), icon: "calendar_today" },
+                      { label: "Lead Days", value: `${selected.lead_days} days before due date`, icon: "schedule" },
+                      { label: "Status", value: selected.is_active ? "Active" : "Paused", icon: "toggle_on" },
+                    ].map(({ label, value, icon }) => (
+                      <div key={label} className="flex items-center gap-3 py-2.5" style={{ borderBottom: "1px solid rgba(215,195,174,0.1)" }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: "16px", color: "#857462" }}>{icon}</span>
+                        <div>
+                          <p className="text-xs" style={{ color: "#857462" }}>{label}</p>
+                          <p className="text-sm font-medium" style={{ color: "#191c1d" }}>{value}</p>
+                        </div>
                       </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Assets panel */}
+                <div className="bg-white rounded-2xl p-5" style={{ boxShadow: "0 4px 20px rgba(25,28,29,0.05)" }}>
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-sm font-bold" style={{ fontFamily: "var(--font-manrope)", color: "#191c1d" }}>Assets</p>
+                    <button
+                      onClick={() => setShowAssetPicker(true)}
+                      className="flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-lg"
+                      style={{ background: "rgba(131,85,0,0.08)", color: "#835500" }}
+                    >
+                      <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>add</span>
+                      Add Asset
+                    </button>
+                  </div>
+
+                  {showAssetPicker && (
+                    <AssetPickerModal
+                      assets={allAssets.filter((a) => !(selected.assets ?? []).some((sa) => sa.id === a.id))}
+                      initialSelection={[]}
+                      title="Add Assets to Schedule"
+                      onConfirm={async (ids) => {
+                        for (const id of ids) await handleAddAsset(id);
+                        setShowAssetPicker(false);
+                      }}
+                      onClose={() => setShowAssetPicker(false)}
+                    />
+                  )}
+
+                  {(selected.assets ?? []).length === 0 ? (
+                    <p className="text-sm" style={{ color: "#857462" }}>No assets linked. Click "Add Asset" to link one.</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-2">
+                      {(selected.assets ?? []).map((a) => (
+                        <div
+                          key={a.id}
+                          className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium"
+                          style={{ background: "rgba(131,85,0,0.08)", color: "#835500" }}
+                        >
+                          <span>{a.tag}{a.name ? ` — ${a.name}` : ""}</span>
+                          <button onClick={() => handleRemoveAsset(a.id)} className="hover:opacity-70">
+                            <span className="material-symbols-outlined" style={{ fontSize: "14px" }}>close</span>
+                          </button>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  )}
                 </div>
               </div>
             )}

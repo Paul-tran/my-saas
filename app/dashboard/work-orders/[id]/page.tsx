@@ -13,6 +13,8 @@ import {
   FAILURE_CAUSE_LABEL, RECURRENCE_LABEL,
 } from "../../../../lib/models/workorders";
 import { CATEGORY_COLOR, CATEGORY_LABEL } from "../../../../lib/models/wotypes";
+import { fetchSites, fetchLocations, fetchUnits, fetchPartitions } from "../../../../lib/models/geography";
+import { fetchAssets } from "../../../../lib/models/assets";
 
 const STATUSES: WorkOrder["status"][] = ["open", "assigned", "in_progress", "on_hold", "completed", "cancelled"];
 
@@ -38,22 +40,104 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
   const [submittingComment, setSubmittingComment] = useState(false);
   const [labourHours, setLabourHours] = useState("");
 
+  // Geography edit state
+  type GeoOpt = { id: number; name: string };
+  const [geoSites, setGeoSites] = useState<GeoOpt[]>([]);
+  const [geoLocations, setGeoLocations] = useState<GeoOpt[]>([]);
+  const [geoUnits, setGeoUnits] = useState<GeoOpt[]>([]);
+  const [geoPartitions, setGeoPartitions] = useState<GeoOpt[]>([]);
+  const [geoAssets, setGeoAssets] = useState<{ id: number; tag: string; name: string | null }[]>([]);
+  const [geoSiteId, setGeoSiteId] = useState("");
+  const [geoLocationId, setGeoLocationId] = useState("");
+  const [geoUnitId, setGeoUnitId] = useState("");
+  const [geoPartitionId, setGeoPartitionId] = useState("");
+  const [geoAssetId, setGeoAssetId] = useState("");
+  const [geoSaving, setGeoSaving] = useState(false);
+
+  const PROJECT_ID = Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1);
+
   useEffect(() => { load(); }, [id]);
 
   async function load() {
     try {
-      const [woData, commentData] = await Promise.all([
+      const [woData, commentData, sites] = await Promise.all([
         fetchWorkOrder(Number(id), ""),
         fetchComments(Number(id), ""),
+        fetchSites(),
       ]);
       setWo(woData);
       setLabourHours(woData.labour_hours?.toString() ?? "");
       setComments(commentData);
+      setGeoSites(sites);
+      setGeoSiteId(woData.site_id ? String(woData.site_id) : "");
+      setGeoLocationId(woData.location_id ? String(woData.location_id) : "");
+      setGeoUnitId(woData.unit_id ? String(woData.unit_id) : "");
+      setGeoPartitionId(woData.partition_id ? String(woData.partition_id) : "");
+      setGeoAssetId(woData.asset_id ? String(woData.asset_id) : "");
+      // Pre-load cascaded options for existing values
+      if (woData.site_id) {
+        const [locs, assets] = await Promise.all([
+          fetchLocations(woData.site_id),
+          fetchAssets(Number(process.env.NEXT_PUBLIC_DEFAULT_PROJECT_ID || 1), undefined, { site_id: woData.site_id }),
+        ]);
+        setGeoLocations(locs);
+        setGeoAssets(assets);
+        if (woData.location_id) {
+          const units = await fetchUnits(woData.location_id);
+          setGeoUnits(units);
+          if (woData.unit_id) {
+            const parts = await fetchPartitions(woData.unit_id);
+            setGeoPartitions(parts);
+          }
+        }
+      }
     } catch (e: any) {
       setError(e.message);
     } finally {
       setLoading(false);
     }
+  }
+
+  // Cascade: site changed
+  useEffect(() => {
+    setGeoLocationId(""); setGeoUnitId(""); setGeoPartitionId("");
+    setGeoLocations([]); setGeoUnits([]); setGeoPartitions([]);
+    setGeoAssets([]); setGeoAssetId("");
+    if (!geoSiteId) return;
+    Promise.all([
+      fetchLocations(Number(geoSiteId)),
+      fetchAssets(PROJECT_ID, undefined, { site_id: Number(geoSiteId) }),
+    ]).then(([locs, assets]) => { setGeoLocations(locs); setGeoAssets(assets); }).catch(() => {});
+  }, [geoSiteId]);
+
+  // Cascade: location changed
+  useEffect(() => {
+    setGeoUnitId(""); setGeoPartitionId("");
+    setGeoUnits([]); setGeoPartitions([]);
+    if (!geoLocationId) return;
+    fetchUnits(Number(geoLocationId)).then(setGeoUnits).catch(() => {});
+  }, [geoLocationId]);
+
+  // Cascade: unit changed
+  useEffect(() => {
+    setGeoPartitionId("");
+    setGeoPartitions([]);
+    if (!geoUnitId) return;
+    fetchPartitions(Number(geoUnitId)).then(setGeoPartitions).catch(() => {});
+  }, [geoUnitId]);
+
+  async function saveGeography() {
+    setGeoSaving(true);
+    try {
+      const updated = await updateWorkOrder(Number(id), {
+        site_id: geoSiteId ? Number(geoSiteId) : undefined,
+        location_id: geoLocationId ? Number(geoLocationId) : undefined,
+        unit_id: geoUnitId ? Number(geoUnitId) : undefined,
+        partition_id: geoPartitionId ? Number(geoPartitionId) : undefined,
+        asset_id: geoAssetId ? Number(geoAssetId) : undefined,
+      }, "");
+      setWo(updated);
+    } catch (e: any) { setError(e.message); } finally { setGeoSaving(false); }
   }
 
   async function changeStatus(status: WorkOrder["status"]) {
@@ -187,17 +271,55 @@ export default function WorkOrderDetailPage({ params }: { params: Promise<{ id: 
               </Grid>
             </Card>
 
-            {(wo.site_id || wo.asset_id) && (
-              <Card title="Location & Asset">
-                <Grid>
-                  {wo.site_id && <Detail label="Site">Site #{wo.site_id}</Detail>}
-                  {wo.location_id && <Detail label="Location">Location #{wo.location_id}</Detail>}
-                  {wo.unit_id && <Detail label="Unit">Unit #{wo.unit_id}</Detail>}
-                  {wo.partition_id && <Detail label="Partition">Partition #{wo.partition_id}</Detail>}
-                  {wo.asset_id && <Detail label="Asset">Asset #{wo.asset_id}</Detail>}
-                </Grid>
-              </Card>
-            )}
+            <Card title="Location & Asset">
+              {(() => {
+                const sel: React.CSSProperties = { width: "100%", background: "#f3f4f5", border: "none", borderRadius: "6px", padding: "7px 10px", fontSize: "13px", color: "#191c1d", outline: "none", cursor: "pointer" };
+                const dis: React.CSSProperties = { ...sel, opacity: 0.45, cursor: "not-allowed" };
+                return (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                    <Grid>
+                      <Detail label="Site">
+                        <select value={geoSiteId} onChange={(e) => setGeoSiteId(e.target.value)} style={sel}>
+                          <option value="">— None —</option>
+                          {geoSites.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                        </select>
+                      </Detail>
+                      <Detail label="Location">
+                        <select value={geoLocationId} onChange={(e) => setGeoLocationId(e.target.value)} disabled={!geoSiteId} style={geoSiteId ? sel : dis}>
+                          <option value="">— None —</option>
+                          {geoLocations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+                        </select>
+                      </Detail>
+                      <Detail label="Unit">
+                        <select value={geoUnitId} onChange={(e) => setGeoUnitId(e.target.value)} disabled={!geoLocationId} style={geoLocationId ? sel : dis}>
+                          <option value="">— None —</option>
+                          {geoUnits.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                        </select>
+                      </Detail>
+                      <Detail label="Partition">
+                        <select value={geoPartitionId} onChange={(e) => setGeoPartitionId(e.target.value)} disabled={!geoUnitId} style={geoUnitId ? sel : dis}>
+                          <option value="">— None —</option>
+                          {geoPartitions.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </Detail>
+                    </Grid>
+                    <Detail label="Asset">
+                      <select value={geoAssetId} onChange={(e) => setGeoAssetId(e.target.value)} disabled={!geoSiteId} style={geoSiteId ? sel : dis}>
+                        <option value="">— None —</option>
+                        {geoAssets.map((a) => <option key={a.id} value={a.id}>{a.tag}{a.name ? ` — ${a.name}` : ""}</option>)}
+                      </select>
+                      {!geoSiteId && <p style={{ fontSize: "11px", color: "#a16207", margin: "4px 0 0" }}>Select a site to see available assets.</p>}
+                    </Detail>
+                    <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                      <button onClick={saveGeography} disabled={geoSaving}
+                        style={{ background: geoSaving ? "#f3f4f5" : "linear-gradient(135deg,#835500,#f5a623)", border: "none", color: geoSaving ? "#857462" : "#fff", borderRadius: "6px", padding: "7px 18px", fontSize: "12px", fontWeight: 600, cursor: geoSaving ? "not-allowed" : "pointer" }}>
+                        {geoSaving ? "Saving…" : "Save Location"}
+                      </button>
+                    </div>
+                  </div>
+                );
+              })()}
+            </Card>
 
             {category === "corrective" && wo.corrective_detail && (
               <Card title="Fault Details">

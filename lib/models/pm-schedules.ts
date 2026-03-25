@@ -16,11 +16,17 @@ export interface PMActivity {
   created_at: string;
 }
 
+export interface PMScheduleAsset {
+  id: number;
+  tag: string;
+  name: string | null;
+}
+
 export interface PMSchedule {
   id: number;
   project_id: number;
   name: string;
-  asset_id: number | null;
+  assets: PMScheduleAsset[];
   site_id: number | null;
   location_id: number | null;
   unit_id: number | null;
@@ -36,7 +42,7 @@ export interface PMSchedule {
 
 export interface PMScheduleCreate {
   name: string;
-  asset_id?: number | null;
+  asset_ids?: number[];
   site_id?: number | null;
   location_id?: number | null;
   unit_id?: number | null;
@@ -74,43 +80,51 @@ export async function fetchPMSchedules(): Promise<PMSchedule[]> {
 }
 
 export async function createPMSchedule(data: PMScheduleCreate): Promise<PMSchedule> {
-  return apiFetch(`/api/v1/projects/${PROJECT_ID}/pm-schedules`, {
+  return apiFetch(`/api/v1/projects/${PROJECT_ID}/pm-schedules`, undefined, {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
 export async function updatePMSchedule(id: number, data: Partial<PMScheduleCreate>): Promise<PMSchedule> {
-  return apiFetch(`/api/v1/pm-schedules/${id}`, {
+  return apiFetch(`/api/v1/pm-schedules/${id}`, undefined, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
 }
 
 export async function deletePMSchedule(id: number): Promise<void> {
-  return apiFetch(`/api/v1/pm-schedules/${id}`, { method: "DELETE" });
+  return apiFetch(`/api/v1/pm-schedules/${id}`, undefined, { method: "DELETE" });
 }
 
 export async function addPMActivity(scheduleId: number, data: PMActivityCreate): Promise<PMActivity> {
-  return apiFetch(`/api/v1/pm-schedules/${scheduleId}/activities`, {
+  return apiFetch(`/api/v1/pm-schedules/${scheduleId}/activities`, undefined, {
     method: "POST",
     body: JSON.stringify(data),
   });
 }
 
 export async function updatePMActivity(scheduleId: number, activityId: number, data: Partial<PMActivityCreate>): Promise<PMActivity> {
-  return apiFetch(`/api/v1/pm-schedules/${scheduleId}/activities/${activityId}`, {
+  return apiFetch(`/api/v1/pm-schedules/${scheduleId}/activities/${activityId}`, undefined, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
 }
 
 export async function deletePMActivity(scheduleId: number, activityId: number): Promise<void> {
-  return apiFetch(`/api/v1/pm-schedules/${scheduleId}/activities/${activityId}`, { method: "DELETE" });
+  return apiFetch(`/api/v1/pm-schedules/${scheduleId}/activities/${activityId}`, undefined, { method: "DELETE" });
+}
+
+export async function addScheduleAsset(scheduleId: number, assetId: number): Promise<PMSchedule> {
+  return apiFetch(`/api/v1/pm-schedules/${scheduleId}/assets/${assetId}`, undefined, { method: "POST" });
+}
+
+export async function removeScheduleAsset(scheduleId: number, assetId: number): Promise<void> {
+  return apiFetch(`/api/v1/pm-schedules/${scheduleId}/assets/${assetId}`, undefined, { method: "DELETE" });
 }
 
 export async function generateWorkOrders(scheduleId: number): Promise<{ generated: number; work_order_ids: number[] }> {
-  return apiFetch(`/api/v1/pm-schedules/${scheduleId}/generate`, { method: "POST" });
+  return apiFetch(`/api/v1/pm-schedules/${scheduleId}/generate`, undefined, { method: "POST" });
 }
 
 export async function fetchScheduleHistory(scheduleId: number): Promise<PMHistoryEntry[]> {
